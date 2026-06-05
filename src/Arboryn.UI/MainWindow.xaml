@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Arboryn.UI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:ctrl="using:Arboryn.UI.Controls"
+    Title="Arboryn">
+
+    <Grid Background="{ThemeResource ArborynAppBackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Custom title bar -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0"
+              Background="Transparent"
+              ColumnSpacing="12" Padding="12,0,12,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Volume pill -->
+            <Button Grid.Column="0"
+                    Style="{StaticResource ArborynPillButton}"
+                    VerticalAlignment="Center"
+                    ToolTipService.ToolTip="Volume actif"
+                    Click="OnVolumePillClick">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                              Glyph="&#xE975;" FontSize="14" />
+                    <TextBlock x:Name="ActiveVolumeText" Text="Tous les volumes"
+                               VerticalAlignment="Center" />
+                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                              Glyph="&#xE70D;" FontSize="10"
+                              Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                </StackPanel>
+            </Button>
+
+            <!-- Universal search -->
+            <AutoSuggestBox Grid.Column="1"
+                            x:Name="UniversalSearch"
+                            VerticalAlignment="Center"
+                            MaxWidth="560"
+                            QueryIcon="Find"
+                            PlaceholderText="Recherche universelle dans le catalogue…" />
+
+            <!-- Trailing actions -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+                        VerticalAlignment="Center">
+                <Button x:Name="ThemeToggleButton"
+                        Style="{StaticResource ArborynSubtleButton}"
+                        ToolTipService.ToolTip="Basculer clair / sombre"
+                        Click="OnThemeToggleClick">
+                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                              Glyph="&#xE774;" FontSize="16" />
+                </Button>
+                <Border Background="{ThemeResource ArborynAccentSelectedBgBrush}"
+                        CornerRadius="{StaticResource ArborynRadiusPill}"
+                        Padding="10,4" VerticalAlignment="Center"
+                        x:Name="ActivityChip" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <muxc:ProgressRing Width="12" Height="12" IsActive="True" />
+                        <TextBlock Text="Scan" Style="{StaticResource ArborynCaptionText}"
+                                   Foreground="{ThemeResource ArborynAccentTextBrush}" />
+                    </StackPanel>
+                </Border>
+                <Border Background="{ThemeResource ArborynAccentSelectedBgBrush}"
+                        CornerRadius="16" Width="32" Height="32"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="AB" FontSize="12" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{ThemeResource ArborynAccentTextBrush}" />
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- NavigationView + content -->
+        <muxc:NavigationView Grid.Row="1"
+                             x:Name="ShellNav"
+                             PaneDisplayMode="Left"
+                             IsBackButtonVisible="Collapsed"
+                             IsSettingsVisible="False"
+                             OpenPaneLength="260"
+                             SelectionChanged="OnNavSelectionChanged"
+                             Background="Transparent">
+
+            <muxc:NavigationView.PaneHeader>
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            Margin="4,4,0,8" VerticalAlignment="Center">
+                    <ctrl:BrandMark HorizontalAlignment="Left" />
+                    <TextBlock Text="Arboryn" VerticalAlignment="Center"
+                               FontSize="15" FontWeight="SemiBold"
+                               Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                </StackPanel>
+            </muxc:NavigationView.PaneHeader>
+
+            <muxc:NavigationView.MenuItems>
+
+                <muxc:NavigationViewItem Tag="dashboard" Content="Tableau de bord">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE80A;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItemHeader Content="Bibliothèque" />
+
+                <muxc:NavigationViewItem Tag="volumes" Content="Volumes">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE975;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItem Tag="catalog" Content="Catalogue">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE8F1;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItem Tag="duplicates" Content="Doublons">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE8C8;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItemHeader Content="Opérations" />
+
+                <muxc:NavigationViewItem Tag="normalize" Content="Uniformisation">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE8AC;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItem Tag="triage" Content="Triage">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE721;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItem Tag="placement" Content="Plan de placement">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE8CE;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItemHeader Content="Système" />
+
+                <muxc:NavigationViewItem Tag="taxonomy" Content="Taxonomie">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE8EC;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+                <muxc:NavigationViewItem Tag="history" Content="Historique">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE81C;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
+            </muxc:NavigationView.MenuItems>
+
+            <muxc:NavigationView.FooterMenuItems>
+                <muxc:NavigationViewItem Tag="settings" Content="Réglages">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE713;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+            </muxc:NavigationView.FooterMenuItems>
+
+            <Frame x:Name="ContentFrame" />
+        </muxc:NavigationView>
+
+        <!-- Scan progress bar footer -->
+        <Border Grid.Row="2"
+                x:Name="ScanBar"
+                Background="{ThemeResource ArborynSolidTertiaryBrush}"
+                BorderBrush="{ThemeResource ArborynStrokeDividerBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,10"
+                Visibility="Collapsed">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <muxc:ProgressRing Grid.Column="0" Width="16" Height="16" IsActive="True" />
+                <TextBlock Grid.Column="1" x:Name="ScanVolumeLabel" Text="Scan en cours"
+                           VerticalAlignment="Center"
+                           Style="{StaticResource ArborynBodyStrongText}" />
+                <muxc:ProgressBar Grid.Column="2" x:Name="ScanProgress"
+                                  Minimum="0" Maximum="100" Value="0"
+                                  VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3" x:Name="ScanEtaLabel"
+                           Text="" VerticalAlignment="Center"
+                           Style="{StaticResource ArborynCaptionText}"
+                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
+                    <Button Style="{StaticResource ArborynSubtleButton}"
+                            ToolTipService.ToolTip="Annuler"
+                            Click="OnCancelScanClick">
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                  Glyph="&#xE711;" FontSize="12" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

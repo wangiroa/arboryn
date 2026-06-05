@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Arboryn.UI.Controls.BrandMark"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="28" Height="28">
+
+    <Grid>
+        <Border CornerRadius="7">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0.15,0" EndPoint="0.85,1">
+                    <GradientStop Color="#FF43A062" Offset="0" />
+                    <GradientStop Color="#FF186236" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+        <Viewbox Width="20" Height="20">
+            <Canvas Width="24" Height="24">
+                <Path Stroke="White" StrokeThickness="2"
+                      StrokeLineJoin="Round"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                      Data="M 12 9 L 12 21" />
+                <Path Fill="White"
+                      Data="M 12 13 C 12 9 15 7 18 7 C 18 11 16 13 12 13 Z" />
+                <Path Fill="White"
+                      Data="M 12 16 C 12 13 9.5 11 6.5 11 C 6.5 14 8.5 16 12 16 Z" />
+            </Canvas>
+        </Viewbox>
+    </Grid>
+</UserControl>

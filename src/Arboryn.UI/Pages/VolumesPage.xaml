@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Arboryn.UI.Pages.VolumesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ctrl="using:Arboryn.UI.Controls">
+
+    <ScrollViewer>
+        <StackPanel Padding="32,24,32,32" Spacing="24" MaxWidth="1200">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Volumes" Style="{StaticResource ArborynTitleText}"
+                           Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                <TextBlock Text="Gestion des disques, NAS et supports externes."
+                           Style="{StaticResource ArborynBodyText}"
+                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+            </StackPanel>
+
+            <ctrl:EmptyStateView
+                Glyph="&#xE975;"
+                Title="Le multi-volume n'est pas encore activé"
+                Message="L'enrôlement des disques externes et NAS, le scan incrémental via USN Journal et l'éditeur de ReplicationScope arrivent à l'incrément 9 de la roadmap. En attendant, tous les fichiers indexés sont rattachés au volume « default »."
+                Milestone="Incrément 9 — Multi-volume et identification stable" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

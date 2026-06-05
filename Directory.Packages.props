@@ -1,0 +1,49 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup Label="Microsoft Extensions">
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+  </ItemGroup>
+  <ItemGroup Label="Serilog">
+    <PackageVersion Include="Serilog" Version="3.1.1" />
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="5.0.1" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
+  </ItemGroup>
+  <ItemGroup Label="Database">
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="8.0.6" />
+    <PackageVersion Include="Dapper" Version="2.1.35" />
+  </ItemGroup>
+  <!-- Templates / métadonnées / images / OCR : non référencés tant que les incréments 4-7
+       ne sont pas implémentés. Versions à RÉVISER (vulnérabilités connues sur Scriban 5.9.1
+       et Magick.NET 13.10.0) avant réintroduction. -->
+  <ItemGroup Label="Templates and metadata (unused until Inc 4+)">
+    <PackageVersion Include="Scriban" Version="5.9.1" />
+    <PackageVersion Include="MetadataExtractor" Version="2.8.1" />
+    <PackageVersion Include="TagLibSharp" Version="2.3.0" />
+    <!-- Inc 4 : TagLibSharp réintroduit pour l'adapter audio. -->
+
+    <PackageVersion Include="PdfPig" Version="0.1.9" />
+    <PackageVersion Include="VersOne.Epub" Version="3.3.2" />
+    <PackageVersion Include="CoenM.ImageSharp.ImageHash" Version="1.3.6" />
+    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="13.10.0" />
+    <PackageVersion Include="Tesseract" Version="5.2.0" />
+  </ItemGroup>
+  <ItemGroup Label="WinUI 3 / Windows App SDK">
+    <PackageVersion Include="Microsoft.WindowsAppSDK" Version="1.5.240607001" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.3233" />
+  </ItemGroup>
+  <ItemGroup Label="Testing">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
+    <PackageVersion Include="xunit" Version="2.8.1" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.1" />
+    <PackageVersion Include="FluentAssertions" Version="6.12.0" />
+    <PackageVersion Include="Verify.Xunit" Version="24.2.0" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+  </ItemGroup>
+</Project>

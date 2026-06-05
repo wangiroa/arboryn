@@ -1,0 +1,53 @@
+# Build outputs
+bin/
+obj/
+out/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+.idea/
+
+# Tests
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+
+# Logs (en cours de dev)
+logs/
+*.log
+
+# Generated
+Generated/
+GeneratedFiles/
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+
+# Visual Studio
+*.sln.docstates
+*.sln.iml
+
+# Resharper
+_ReSharper*/
+*.ReSharper
+
+# Database temp
+*.db-wal
+*.db-shm
+*.db-journal
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local appsettings (override)
+appsettings.Development.json
+appsettings.Local.json

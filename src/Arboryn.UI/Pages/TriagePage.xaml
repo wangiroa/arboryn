@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Arboryn.UI.Pages.TriagePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ctrl="using:Arboryn.UI.Controls">
+    <ScrollViewer>
+        <StackPanel Padding="32,24,32,32" Spacing="24" MaxWidth="1200">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Triage" Style="{StaticResource ArborynTitleText}"
+                           Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                <TextBlock Text="Catégorisation rapide des documents officiels non classés."
+                           Style="{StaticResource ArborynBodyText}"
+                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+            </StackPanel>
+            <ctrl:EmptyStateView
+                Glyph="&#xE721;"
+                Title="Le triage assisté n'est pas encore activé"
+                Message="L'extraction OCR Tesseract, la grille de triage en lot, le pré-remplissage par patterns et l'apprentissage à partir des corrections arrivent à l'incrément 7."
+                Milestone="Incrément 7 — Triage de documents" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

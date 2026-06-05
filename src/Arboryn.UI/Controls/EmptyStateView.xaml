@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Arboryn.UI.Controls.EmptyStateView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Border Style="{StaticResource ArborynCardBorder}"
+            Margin="0,40,0,0" Padding="48,40">
+        <StackPanel HorizontalAlignment="Center" Spacing="16" MaxWidth="520">
+            <Border Width="72" Height="72"
+                    CornerRadius="20"
+                    Background="{ThemeResource ArborynAccentSelectedBgBrush}"
+                    HorizontalAlignment="Center">
+                <FontIcon x:Name="GlyphIcon"
+                          FontFamily="{StaticResource ArborynIconFontFamily}"
+                          Glyph="&#xE946;" FontSize="32"
+                          Foreground="{ThemeResource ArborynAccentTextBrush}" />
+            </Border>
+            <TextBlock x:Name="TitleText"
+                       Style="{StaticResource ArborynSubtitleText}"
+                       HorizontalAlignment="Center"
+                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+            <TextBlock x:Name="MessageText"
+                       Style="{StaticResource ArborynBodyText}"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       HorizontalAlignment="Center"
+                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+            <Border x:Name="MilestoneBadge"
+                    Style="{StaticResource ArborynBadgeBorder}"
+                    HorizontalAlignment="Center"
+                    Margin="0,4,0,0">
+                <TextBlock x:Name="MilestoneText"
+                           Style="{StaticResource ArborynCaptionText}"
+                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+            </Border>
+        </StackPanel>
+    </Border>
+</UserControl>

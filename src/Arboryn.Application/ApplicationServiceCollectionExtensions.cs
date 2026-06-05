@@ -1,0 +1,25 @@
+using Arboryn.Application.UseCases;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Arboryn.Application;
+
+/// <summary>Enregistrement DI des use cases de la couche Application.</summary>
+public static class ApplicationServiceCollectionExtensions
+{
+    public static IServiceCollection AddArborynApplication(this IServiceCollection services)
+    {
+        services.AddTransient<ScanDirectoryHandler>();
+        services.AddTransient<DetectExactDuplicatesHandler>();
+        services.AddTransient<DetectFuzzyDuplicatesHandler>();
+        services.AddTransient<ClearCatalogHandler>();
+        services.AddTransient<DeleteFilesHandler>();
+        services.AddTransient<UndoLastBatchHandler>();
+        services.AddTransient<ConfirmByHashHandler>();
+        services.AddTransient<PromoteByHashHandler>();
+        services.AddTransient<ExtractMetadataHandler>();
+        services.AddTransient<ComputePerceptualHashesHandler>();
+        services.AddTransient<DetectPerceptualDuplicatesHandler>();
+        services.AddTransient<PromotePerceptualHandler>();
+        return services;
+    }
+}

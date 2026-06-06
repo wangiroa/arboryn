@@ -6,7 +6,7 @@
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:vm="using:Arboryn.UI.ViewModels">
 
-    <Grid Padding="32,24,32,16" RowSpacing="16">
+    <Grid x:Name="RootGrid" Padding="32,24,32,16" RowSpacing="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -16,57 +16,68 @@
         </Grid.RowDefinitions>
 
         <!-- Page head -->
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0" Spacing="4">
-                <TextBlock Text="Doublons" Style="{StaticResource ArborynTitleText}"
-                           Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                <TextBlock x:Name="SummaryText"
-                           Style="{StaticResource ArborynBodyText}"
-                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
-                <Button Content="Choisir un dossier…" Click="OnPickFolderClick"
-                        IsEnabled="{x:Bind ViewModel.CanScan, Mode=OneWay}" />
-                <Button Content="Re-scanner" Click="OnRescanClick"
-                        IsEnabled="{x:Bind ViewModel.CanRescan, Mode=OneWay}" />
-                <Button Click="OnCancelClick"
-                        Visibility="{x:Bind ViewModel.IsScanning, Mode=OneWay}">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                                  Glyph="&#xE711;" FontSize="12" />
-                        <TextBlock Text="Annuler" />
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-        </Grid>
+        <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock Text="Doublons" Style="{StaticResource ArborynTitleText}"
+                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+            <TextBlock x:Name="SummaryText"
+                       Style="{StaticResource ArborynBodyText}"
+                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+        </StackPanel>
 
-        <!-- Folder path + InfoBar safety -->
+        <!-- Folder path + actions + InfoBar safety -->
         <StackPanel Grid.Row="1" Spacing="8">
-            <Border Background="{ThemeResource ArborynCardSecondaryBrush}"
-                    CornerRadius="{StaticResource ArborynRadiusCard}"
-                    BorderBrush="{ThemeResource ArborynStrokeCardBrush}"
-                    BorderThickness="1"
-                    Padding="12,8">
-                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                              Glyph="&#xF12B;" FontSize="14"
-                              Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-                    <TextBlock Text="Dossier analysé :"
-                               Style="{StaticResource ArborynCaptionText}"
-                               Foreground="{ThemeResource ArborynTextSecondaryBrush}"
-                               VerticalAlignment="Center" />
-                    <TextBlock Text="{x:Bind ViewModel.CurrentFolder, Mode=OneWay}"
-                               Style="{StaticResource ArborynBodyText}"
-                               Foreground="{ThemeResource ArborynTextPrimaryBrush}"
-                               TextTrimming="CharacterEllipsis"
-                               ToolTipService.ToolTip="{x:Bind ViewModel.CurrentFolder, Mode=OneWay}"
-                               VerticalAlignment="Center" />
+            <!-- Indicateur d'activité : visible tant qu'un scan ou une suppression est en cours -->
+            <muxc:ProgressBar IsIndeterminate="True"
+                              Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+
+            <!-- Dossier analysé + boutons d'action sur la même ligne -->
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        Background="{ThemeResource ArborynCardSecondaryBrush}"
+                        CornerRadius="{StaticResource ArborynRadiusCard}"
+                        BorderBrush="{ThemeResource ArborynStrokeCardBrush}"
+                        BorderThickness="1"
+                        Padding="12,8"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                  Glyph="&#xF12B;" FontSize="14"
+                                  Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                        <TextBlock Text="Dossier analysé :"
+                                   Style="{StaticResource ArborynCaptionText}"
+                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{x:Bind ViewModel.CurrentFolder, Mode=OneWay}"
+                                   Style="{StaticResource ArborynBodyText}"
+                                   Foreground="{ThemeResource ArborynTextPrimaryBrush}"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTipService.ToolTip="{x:Bind ViewModel.CurrentFolder, Mode=OneWay}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Content="Choisir un dossier…" Click="OnPickFolderClick"
+                            IsEnabled="{x:Bind ViewModel.CanScan, Mode=OneWay}" />
+                    <Button Content="{x:Bind ViewModel.ScanButtonLabel, Mode=OneWay}"
+                            Click="OnScanClick"
+                            Style="{StaticResource AccentButtonStyle}"
+                            IsEnabled="{x:Bind ViewModel.CanRunScan, Mode=OneWay}" />
+                    <Button Click="OnCancelClick"
+                            Visibility="{x:Bind ViewModel.IsScanning, Mode=OneWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                      Glyph="&#xE711;" FontSize="12" />
+                            <TextBlock Text="Annuler" />
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
-            </Border>
+            </Grid>
 
             <Border Background="{ThemeResource ArborynCautionBgBrush}"
                     CornerRadius="{StaticResource ArborynRadiusCard}"
@@ -91,6 +102,19 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
+                            ToolTipService.ToolTip="Types de doublons recherchés au prochain scan. Modifiez la sélection puis relancez « Re-scanner ».">
+                    <TextBlock Text="Détecter :"
+                               Style="{StaticResource ArborynCaptionText}"
+                               Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                               VerticalAlignment="Center" />
+                    <CheckBox Content="Exacts" MinWidth="0"
+                              IsChecked="{x:Bind ViewModel.DetectExact, Mode=TwoWay}" />
+                    <CheckBox Content="Flous" MinWidth="0"
+                              IsChecked="{x:Bind ViewModel.DetectFuzzy, Mode=TwoWay}" />
+                    <CheckBox Content="Perceptuels" MinWidth="0"
+                              IsChecked="{x:Bind ViewModel.DetectPerceptual, Mode=TwoWay}" />
+                </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <TextBlock Text="Périmètre :"
                                Style="{StaticResource ArborynCaptionText}"
@@ -102,14 +126,18 @@
                                   IsOn="{x:Bind ViewModel.DetectWholeCatalog, Mode=TwoWay}"
                                   VerticalAlignment="Center" />
                 </StackPanel>
-                <Button Click="OnDetectFuzzyClick"
-                        IsEnabled="{x:Bind ViewModel.CanScan, Mode=OneWay}">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                                  Glyph="&#xE721;" FontSize="12" />
-                        <TextBlock Text="Détecter aussi les doublons flous" />
-                    </StackPanel>
-                </Button>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="Type :"
+                               Style="{StaticResource ArborynCaptionText}"
+                               Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                               VerticalAlignment="Center" />
+                    <ComboBox MinWidth="200"
+                              ItemsSource="{x:Bind ViewModel.MediaFilters}"
+                              SelectedItem="{x:Bind ViewModel.SelectedMediaFilter, Mode=TwoWay}"
+                              DisplayMemberPath="Label"
+                              VerticalAlignment="Center"
+                              ToolTipService.ToolTip="Filtre les groupes par type de média. Les extensions ambiguës (PDF, JPG…) apparaissent sous plusieurs types — un PDF compte comme document, ebook et BD." />
+                </StackPanel>
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
@@ -134,11 +162,16 @@
         </Grid>
 
         <!-- Status -->
-        <TextBlock Grid.Row="3"
-                   Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
-                   Style="{StaticResource ArborynBodyText}"
-                   Foreground="{ThemeResource ArborynTextSecondaryBrush}"
-                   TextWrapping="Wrap" />
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <muxc:ProgressRing Width="16" Height="16"
+                               IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}"
+                               Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+            <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                       Style="{StaticResource ArborynBodyText}"
+                       Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center" />
+        </StackPanel>
 
         <!-- Groups list -->
         <Border Grid.Row="4" Style="{StaticResource ArborynCardBorder}" Padding="0">
@@ -179,9 +212,11 @@
                                 <Button Grid.Column="2" Content="Confirmer par hash"
                                         Click="OnConfirmHashClick"
                                         Margin="0,0,8,0"
+                                        IsEnabled="{Binding DataContext.CanScan, ElementName=RootGrid}"
                                         Visibility="{x:Bind ConfirmByHashVisibility}" />
                                 <Button Grid.Column="3"
-                                        Click="OnDeleteGroupClick">
+                                        Click="OnDeleteGroupClick"
+                                        IsEnabled="{Binding DataContext.CanScan, ElementName=RootGrid}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
                                                   Glyph="&#xE74D;" FontSize="12" />
@@ -192,10 +227,34 @@
                             <ItemsControl ItemsSource="{x:Bind Members}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:DuplicateMemberItem">
-                                        <CheckBox IsChecked="{x:Bind ShouldDelete, Mode=TwoWay}"
-                                                  Content="{x:Bind Label, Mode=OneWay}"
-                                                  Margin="16,0,0,0"
-                                                  MinWidth="0" />
+                                        <Grid Margin="16,4,0,4" ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <!-- Aperçu : miniature pour les images, glyphe sinon -->
+                                            <Border Grid.Column="0" Width="76" Height="56"
+                                                    Background="{ThemeResource ArborynCardSecondaryBrush}"
+                                                    BorderBrush="{ThemeResource ArborynStrokeCardBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    VerticalAlignment="Center">
+                                                <Grid>
+                                                    <Image Source="{x:Bind Thumbnail}"
+                                                           Stretch="UniformToFill"
+                                                           Visibility="{x:Bind ThumbnailVisibility}" />
+                                                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                                              Glyph="&#xE8A5;" FontSize="18"
+                                                              Visibility="{x:Bind GlyphVisibility}"
+                                                              Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                                </Grid>
+                                            </Border>
+                                            <CheckBox Grid.Column="1"
+                                                      IsChecked="{x:Bind ShouldDelete, Mode=TwoWay}"
+                                                      Content="{x:Bind Label, Mode=OneWay}"
+                                                      VerticalAlignment="Center"
+                                                      MinWidth="0" />
+                                        </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

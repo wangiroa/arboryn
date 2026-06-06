@@ -23,7 +23,7 @@
        ne sont pas implémentés. Versions à RÉVISER (vulnérabilités connues sur Scriban 5.9.1
        et Magick.NET 13.10.0) avant réintroduction. -->
   <ItemGroup Label="Templates and metadata (unused until Inc 4+)">
-    <PackageVersion Include="Scriban" Version="5.9.1" />
+    <PackageVersion Include="Scriban" Version="5.12.1" />
     <PackageVersion Include="MetadataExtractor" Version="2.8.1" />
     <PackageVersion Include="TagLibSharp" Version="2.3.0" />
     <!-- Inc 4 : TagLibSharp réintroduit pour l'adapter audio. -->

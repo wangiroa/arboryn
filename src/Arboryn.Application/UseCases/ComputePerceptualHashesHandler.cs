@@ -1,5 +1,4 @@
 using Arboryn.Application.Abstractions;
-using Arboryn.Domain.Enums;
 using Arboryn.Domain.Metadata;
 using Arboryn.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
@@ -14,16 +13,16 @@ namespace Arboryn.Application.UseCases;
 public sealed class ComputePerceptualHashesHandler
 {
     private readonly IPerceptualHashStore _store;
-    private readonly IImagePerceptualHasher _hasher;
+    private readonly IReadOnlyList<IPerceptualHasher> _hashers;
     private readonly ILogger<ComputePerceptualHashesHandler> _logger;
 
     public ComputePerceptualHashesHandler(
         IPerceptualHashStore store,
-        IImagePerceptualHasher hasher,
+        IEnumerable<IPerceptualHasher> hashers,
         ILogger<ComputePerceptualHashesHandler> logger)
     {
         _store = store;
-        _hasher = hasher;
+        _hashers = hashers.ToList();
         _logger = logger;
     }
 
@@ -42,15 +41,17 @@ public sealed class ComputePerceptualHashesHandler
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Seules les images portent une empreinte perceptuelle à ce stade (Inc 5).
-            if (MediaClassifier.FromExtension(instance.Path.Extension) != MediaCategory.Photo)
+            // Sélectionne le hasher pour la catégorie du fichier (image, vidéo…) ; ignore le reste.
+            var category = MediaClassifier.FromExtension(instance.Path.Extension);
+            var hasher = _hashers.FirstOrDefault(h => h.CanHash(category));
+            if (hasher is null)
             {
                 continue;
             }
 
             try
             {
-                var hash = await _hasher.ComputeAsync(instance.Path, cancellationToken).ConfigureAwait(false);
+                var hash = await hasher.ComputeAsync(instance.Path, cancellationToken).ConfigureAwait(false);
                 if (hash is { } value)
                 {
                     await _store.SetAsync(instance.Id, value, cancellationToken).ConfigureAwait(false);

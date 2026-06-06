@@ -51,3 +51,4 @@ desktop.ini
 # Local appsettings (override)
 appsettings.Development.json
 appsettings.Local.json
+.claude/settings.json

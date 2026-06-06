@@ -1,10 +1,14 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using Arboryn.Application.UseCases;
 using Arboryn.Domain.Enums;
+using Arboryn.Domain.Metadata;
 using Arboryn.Domain.ValueObjects;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Arboryn.UI.ViewModels;
 
@@ -27,6 +31,15 @@ public sealed class DuplicateGroupItem
 
     public IReadOnlyList<DuplicateMemberItem> Members { get; }
 
+    /// <summary>
+    /// Catégories de filtre couvertes par le groupe : union des catégories possibles de chaque
+    /// copie (d'après l'extension). Sert au filtrage par type de média de la vue des doublons.
+    /// </summary>
+    public IReadOnlySet<MediaFilterType> MediaTypes { get; }
+
+    /// <summary>Vrai si le groupe doit s'afficher pour le filtre demandé (<c>null</c> = tous types).</summary>
+    public bool Matches(MediaFilterType? filter) => filter is null || MediaTypes.Contains(filter.Value);
+
     public DuplicateGroupItem(DuplicateGroupView view)
         : this(
             view.Kind,
@@ -41,6 +54,9 @@ public sealed class DuplicateGroupItem
         Kind = kind;
         KindLabel = LabelFor(kind);
         Members = members;
+        MediaTypes = members
+            .SelectMany(m => MediaFilterClassifier.FromExtension(m.Path.Extension))
+            .ToHashSet();
 
         var totalBytes = members.Sum(m => m.Size);
         var largest = members.Max(m => m.Size);
@@ -72,9 +88,9 @@ public sealed class DuplicateGroupItem
     {
         var reclaimable = members.Sum(m => m.Size) - members.Max(m => m.Size);
 
-        if (kind == DuplicateGroupKind.FuzzyName)
+        // Cas flou et perceptuel : noms/tailles hétérogènes. Représentant = nom le plus court.
+        if (kind is DuplicateGroupKind.FuzzyName or DuplicateGroupKind.Perceptual)
         {
-            // Cas flou : noms/tailles hétérogènes. Représentant = nom le plus court.
             var representative = members
                 .OrderBy(m => System.IO.Path.GetFileName(m.DisplayPath).Length)
                 .First();
@@ -116,7 +132,48 @@ public sealed class DuplicateMemberItem : INotifyPropertyChanged
         _baseLabel = $"{path.Value} — {SizeFormatter.Humanize(size)}";
         Directory = System.IO.Path.GetDirectoryName(path.Value) ?? string.Empty;
         _shouldDelete = shouldDelete;
+        IsImage = MediaClassifier.FromExtension(path.Extension) == MediaCategory.Photo;
     }
+
+    /// <summary>Vrai si le fichier est une image — déclenche l'aperçu miniature dans la comparaison.</summary>
+    public bool IsImage { get; }
+
+    public Visibility ThumbnailVisibility => IsImage ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility GlyphVisibility => IsImage ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>
+    /// Miniature de l'image, construite paresseusement à la première lecture (sur le thread UI,
+    /// via x:Bind). Décodée à ~220 px pour limiter la mémoire. <c>null</c> hors images.
+    /// </summary>
+    public ImageSource? Thumbnail
+    {
+        get
+        {
+            if (_thumbnailLoaded)
+            {
+                return _thumbnail;
+            }
+
+            _thumbnailLoaded = true;
+            if (IsImage)
+            {
+                try
+                {
+                    _thumbnail = new BitmapImage(new Uri(Path.Value)) { DecodePixelWidth = 220 };
+                }
+                catch (Exception)
+                {
+                    _thumbnail = null;
+                }
+            }
+
+            return _thumbnail;
+        }
+    }
+
+    private ImageSource? _thumbnail;
+    private bool _thumbnailLoaded;
 
     /// <summary>Chemin + taille, et empreinte courte une fois calculée (copies identiques = même #hash).</summary>
     public string Label => _hash is null ? _baseLabel : $"{_baseLabel}   —   #{_hash}";

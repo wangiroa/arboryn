@@ -20,6 +20,10 @@ public static class ApplicationServiceCollectionExtensions
         services.AddTransient<ComputePerceptualHashesHandler>();
         services.AddTransient<DetectPerceptualDuplicatesHandler>();
         services.AddTransient<PromotePerceptualHandler>();
+        services.AddTransient<ComputeAudioFingerprintsHandler>();
+        services.AddTransient<DetectAudioDuplicatesHandler>();
+        services.AddTransient<PromoteAudioHandler>();
+        services.AddTransient<CanonicalPathResolver>();
         return services;
     }
 }

@@ -130,6 +130,66 @@ public class PrioritySelectionTests
         PrioritySelection.ChooseKeepIndex(members, priorities, useScore: true).Should().Be(1);
     }
 
+    [Theory]
+    [InlineData(@"C:\Livres\Tolkien", @"C:\Livres\*", true)]   // sous-arbre
+    [InlineData(@"C:\Livres", @"C:\Livres\*", true)]            // la racine elle-même
+    [InlineData(@"C:\Livres\Tolkien\Sda", @"C:\Livres\*", true)] // plus profond
+    [InlineData(@"C:\Musique", @"C:\Livres\*", false)]
+    [InlineData(@"C:\Users\dominique\Downloads", @"C:\Users\*\Downloads", true)]
+    [InlineData(@"C:\Users\dominique\Downloads\Sub", @"C:\Users\*\Downloads", true)]
+    [InlineData(@"C:\Users\dominique\Documents", @"C:\Users\*\Downloads", false)]
+    [InlineData(@"C:\Users\dominique\foo\Downloads", @"C:\Users\**\Downloads", true)]
+    [InlineData(@"C:\Documents2\x", @"C:\Documents", false)]    // respect des frontières de segment
+    [InlineData(@"C:\Documents\x", @"C:\Documents", true)]      // sans générique = préfixe d'arbre
+    public void MatchesPattern_HandlesWildcardsAndSubtrees(string directory, string pattern, bool expected)
+    {
+        PrioritySelection.MatchesPattern(directory, pattern).Should().Be(expected);
+    }
+
+    [Fact]
+    public void ChooseKeepIndex_ExcludedDirectory_IsDiscardedWhenAnotherCopyExists()
+    {
+        var members = new[]
+        {
+            new KeepCandidate(@"C:\Users\X\Downloads", 100, "f.pdf"),
+            new KeepCandidate(@"C:\Users\X\Documents\Rangé", 100, "f.pdf"),
+        };
+        var excluded = new[] { @"C:\Users\X\Downloads\*" };
+
+        // La copie hors « Downloads » est conservée (index 1).
+        PrioritySelection.ChooseKeepIndex(members, System.Array.Empty<string>(), useScore: false, excluded)
+            .Should().Be(1);
+    }
+
+    [Fact]
+    public void ChooseKeepIndex_PriorityWinsOverExclusion()
+    {
+        var members = new[]
+        {
+            new KeepCandidate(@"C:\Downloads", 100, "f.pdf"),
+            new KeepCandidate(@"C:\Keep", 100, "f.pdf"),
+        };
+        var priorities = new[] { @"C:\Keep" };
+        var excluded = new[] { @"C:\Downloads" };
+
+        PrioritySelection.ChooseKeepIndex(members, priorities, useScore: false, excluded).Should().Be(1);
+    }
+
+    [Fact]
+    public void ChooseKeepIndex_AllExcluded_StillKeepsOne()
+    {
+        var members = new[]
+        {
+            new KeepCandidate(@"C:\Downloads\a", 100, "f.pdf"),
+            new KeepCandidate(@"C:\Downloads\b", 100, "f.pdf"),
+        };
+        var excluded = new[] { @"C:\Downloads\*" };
+
+        // Aucun départage par exclusion (les deux exclus) → score/premier décident, jamais d'index hors borne.
+        var keep = PrioritySelection.ChooseKeepIndex(members, System.Array.Empty<string>(), useScore: false, excluded);
+        keep.Should().BeInRange(0, members.Length - 1);
+    }
+
     [Fact]
     public void PreferableScore_PenalisesCopyAndVersionMarkers()
     {

@@ -1,25 +1,25 @@
 using Arboryn.Application.Abstractions;
 using Arboryn.Domain.Entities;
 using Arboryn.Domain.Enums;
-using Arboryn.Domain.Metadata;
+using Arboryn.Domain.Matching;
 using Arboryn.Domain.ValueObjects;
 
 namespace Arboryn.Application.UseCases;
 
 /// <summary>
-/// Promotion perceptuelle (Inc 5) : consolide chaque groupe d'images visuellement proches
-/// sous un même <see cref="LogicalFile"/> à signature <c>phash</c> (empreinte du représentant),
-/// en y rattachant toutes les FileInstances. Les LogicalFiles devenus orphelins (typiquement
-/// les LFs <c>name_size</c> des copies recompressées) sont nettoyés.
+/// Promotion acoustique (Inc 5) : consolide chaque groupe d'enregistrements du même
+/// morceau sous un même <see cref="LogicalFile"/> à signature <c>chromaprint</c>
+/// (empreinte du représentant), en y rattachant toutes les FileInstances. Les LogicalFiles
+/// devenus orphelins (par ex. les LFs <c>name_size</c> des copies ré-encodées) sont nettoyés.
 /// </summary>
-public sealed class PromotePerceptualHandler
+public sealed class PromoteAudioHandler
 {
-    private readonly IPerceptualHashStore _store;
+    private readonly IAudioFingerprintStore _store;
     private readonly ILogicalFileRepository _logicalFiles;
     private readonly IFileInstanceLinker _linker;
 
-    public PromotePerceptualHandler(
-        IPerceptualHashStore store,
+    public PromoteAudioHandler(
+        IAudioFingerprintStore store,
         ILogicalFileRepository logicalFiles,
         IFileInstanceLinker linker)
     {
@@ -29,17 +29,17 @@ public sealed class PromotePerceptualHandler
     }
 
     /// <summary>
-    /// Détecte les groupes perceptuels d'un volume et les promeut. Renvoie le nombre de
+    /// Détecte les groupes acoustiques d'un volume et les promeut. Renvoie le nombre de
     /// groupes consolidés.
     /// </summary>
     public async Task<int> ExecuteAsync(
         VolumeId volumeId,
         FilePath? underRoot = null,
-        int maxDistance = DetectPerceptualDuplicatesHandler.DefaultMaxDistance,
+        double minSimilarity = ChromaprintMatcher.DefaultMinSimilarity,
         CancellationToken cancellationToken = default)
     {
-        var hashed = await _store.GetHashedAsync(volumeId, underRoot, cancellationToken).ConfigureAwait(false);
-        var groups = DetectPerceptualDuplicatesHandler.GroupCore(hashed, maxDistance);
+        var fingerprinted = await _store.GetFingerprintedAsync(volumeId, underRoot, cancellationToken).ConfigureAwait(false);
+        var groups = DetectAudioDuplicatesHandler.GroupCore(fingerprinted, minSimilarity);
         if (groups.Count == 0)
         {
             return 0;
@@ -49,7 +49,7 @@ public sealed class PromotePerceptualHandler
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var signature = ContentSignature.FromPerceptualHash(group.Representative);
+            var signature = ContentSignature.FromChromaprint(group.Representative);
             var existing = await _logicalFiles.FindBySignatureAsync(signature, cancellationToken).ConfigureAwait(false);
 
             LogicalFileId logicalFileId;
@@ -60,8 +60,7 @@ public sealed class PromotePerceptualHandler
             else
             {
                 var now = DateTime.UtcNow;
-                var category = DeriveCategory(group.Members);
-                var logicalFile = new LogicalFile(LogicalFileId.New(), category, signature, now, now);
+                var logicalFile = new LogicalFile(LogicalFileId.New(), MediaCategory.Audiobook, signature, now, now);
                 await _logicalFiles.UpsertAsync(logicalFile, cancellationToken).ConfigureAwait(false);
                 logicalFileId = logicalFile.Id;
             }
@@ -74,18 +73,5 @@ public sealed class PromotePerceptualHandler
 
         await _logicalFiles.DeleteOrphansAsync(cancellationToken).ConfigureAwait(false);
         return groups.Count;
-    }
-
-    /// <summary>
-    /// Catégorie commune des membres (image, vidéo…), déduite de leur extension. Si les
-    /// membres divergent, <see cref="MediaCategory.Unknown"/>.
-    /// </summary>
-    private static MediaCategory DeriveCategory(IReadOnlyList<PerceptualHashedInstance> members)
-    {
-        var categories = members
-            .Select(m => MediaClassifier.FromExtension(m.Instance.Path.Extension))
-            .Distinct()
-            .ToList();
-        return categories.Count == 1 ? categories[0] : MediaCategory.Unknown;
     }
 }

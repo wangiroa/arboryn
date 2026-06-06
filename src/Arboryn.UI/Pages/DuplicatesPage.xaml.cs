@@ -55,10 +55,14 @@ public sealed partial class DuplicatesPage : Page
 
     private void UpdateSummary()
     {
-        var count = ViewModel.Groups.Count;
-        SummaryText.Text = count == 0
-            ? "Lancez une détection sur un dossier pour faire apparaître les groupes."
-            : $"{count} groupe(s) détecté(s).";
+        var shown = ViewModel.Groups.Count;
+        var total = ViewModel.TotalGroupCount;
+        SummaryText.Text = total switch
+        {
+            0 => "Lancez une détection sur un dossier pour faire apparaître les groupes.",
+            _ when shown == total => $"{total} groupe(s) détecté(s).",
+            _ => $"{shown} groupe(s) affiché(s) sur {total} (filtre par type actif).",
+        };
     }
 
     public void RequestCancelScan() => ViewModel.CancelScan();
@@ -76,15 +80,14 @@ public sealed partial class DuplicatesPage : Page
         var folder = await picker.PickSingleFolderAsync();
         if (folder is not null)
         {
-            await ViewModel.ScanAndDetectAsync(folder.Path);
+            // On mémorise le dossier ; le scan ne démarre qu'au clic sur « Scanner ».
+            ViewModel.SelectFolder(folder.Path);
         }
     }
 
-    private async void OnRescanClick(object sender, RoutedEventArgs e) => await ViewModel.RescanAsync();
+    private async void OnScanClick(object sender, RoutedEventArgs e) => await ViewModel.RunScanAsync();
 
     private void OnCancelClick(object sender, RoutedEventArgs e) => ViewModel.CancelScan();
-
-    private async void OnDetectFuzzyClick(object sender, RoutedEventArgs e) => await ViewModel.DetectFuzzyAsync();
 
     private async void OnConfirmHashClick(object sender, RoutedEventArgs e)
     {

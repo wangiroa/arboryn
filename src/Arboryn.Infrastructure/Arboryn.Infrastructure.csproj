@@ -2,6 +2,14 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>Arboryn.Infrastructure</RootNamespace>
+    <!-- Inc 6 : Scriban est requis par le brief mais toutes ses versions portent des
+         advisories NuGet (NU1902 modérée / NU1903 élevée / NU1904 CRITIQUE —
+         injection de template / évasion de bac à sable / ReDoS). Décision projet :
+         on l'accepte car les templates sont rédigés par l'utilisateur lui-même (entrée
+         de confiance) et le rendu se fait en mode restreint (LiquidTemplateContext sans
+         I/O). Suppression limitée à ce projet, le seul à référencer Scriban.
+         À retirer dès qu'une version corrigée de Scriban est disponible. -->
+    <NoWarn>$(NoWarn);NU1902;NU1903;NU1904</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Arboryn.Domain\Arboryn.Domain.csproj" />
@@ -18,8 +26,9 @@
     <PackageReference Include="MetadataExtractor" />
     <!-- Inc 5 : empreinte perceptuelle d'images (pHash via ImageSharp). -->
     <PackageReference Include="CoenM.ImageSharp.ImageHash" />
-    <!-- Autres lecteurs (Scriban, Magick.NET, Tesseract) :
-         réintroduits par incrément (6 à 7) à des versions vérifiées. -->
+    <!-- Inc 6 : moteur de templates (chemins/noms canoniques), sandboxé. -->
+    <PackageReference Include="Scriban" />
+    <!-- Magick.NET, Tesseract : réintroduits à l'Inc 7 à des versions vérifiées. -->
   </ItemGroup>
   <ItemGroup>
     <None Update="Database\Migrations\*.sql">

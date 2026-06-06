@@ -83,7 +83,9 @@ public class PerceptualHashingTests
 
         // 1) Calcule les empreintes perceptuelles des images (3 images, le .txt est ignoré).
         var computer = new ComputePerceptualHashesHandler(
-            repository, new ImageSharpPerceptualHasher(), NullLogger<ComputePerceptualHashesHandler>.Instance);
+            repository,
+            new IPerceptualHasher[] { new ImageSharpPerceptualHasher() },
+            NullLogger<ComputePerceptualHashesHandler>.Instance);
         var hashed = await computer.ExecuteAsync(VolumeId.Default);
         hashed.Should().Be(3);
 

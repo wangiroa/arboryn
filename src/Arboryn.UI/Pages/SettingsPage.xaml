@@ -55,7 +55,7 @@
                             <TextBlock Text="Dossiers prioritaires"
                                        Style="{StaticResource ArborynBodyStrongText}"
                                        Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                            <TextBlock Text="Quand un même fichier est présent à plusieurs endroits, la version située dans un de ces dossiers est conservée. L'ordre est important : du plus prioritaire au moins."
+                            <TextBlock Text="Quand un même fichier est présent à plusieurs endroits, la version située dans un de ces dossiers est conservée. L'ordre est important : du plus prioritaire au moins. Astuce : un motif comme C:\Livres\* favorise tout le sous-arbre d'un coup, et C:\Users\*\Documents s'applique à tout utilisateur."
                                        Style="{StaticResource ArborynCaptionText}"
                                        Foreground="{ThemeResource ArborynTextSecondaryBrush}"
                                        TextWrapping="Wrap" />
@@ -137,6 +137,85 @@
                             <ComboBox x:Name="SuggestionsCombo" MinWidth="280"
                                       ItemsSource="{x:Bind ViewModel.SuggestedDirectories, Mode=OneWay}" />
                             <Button Content="Ajouter" Click="OnAddSuggestionClick" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox x:Name="PriorityPatternBox" MinWidth="360"
+                                     PlaceholderText="ou un motif : C:\Livres\*"
+                                     KeyDown="OnPriorityPatternKeyDown" />
+                            <Button Content="Ajouter le motif" Click="OnAddPriorityPatternClick" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Border Background="{ThemeResource ArborynStrokeDividerBrush}" Height="1" />
+
+                    <!-- Excluded directories -->
+                    <StackPanel Spacing="12">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Dossiers à écarter"
+                                       Style="{StaticResource ArborynBodyStrongText}"
+                                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                            <TextBlock Text="Quand un même fichier existe ailleurs, la copie située dans un de ces dossiers est écartée par défaut (cochée pour suppression). Idéal pour un dossier « Téléchargements » dont le contenu est déjà rangé. Motifs génériques acceptés (C:\…\Downloads\*, C:\Users\*\Downloads)."
+                                       Style="{StaticResource ArborynCaptionText}"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <Border Background="{ThemeResource ArborynCardSecondaryBrush}"
+                                BorderBrush="{ThemeResource ArborynStrokeCardBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource ArborynRadiusCard}"
+                                Padding="0">
+                            <ListView ItemsSource="{x:Bind ViewModel.ExcludedDirectories, Mode=OneWay}"
+                                      SelectionMode="None"
+                                      Background="Transparent"
+                                      MaxHeight="180">
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="Padding" Value="12,6" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <Grid ColumnSpacing="6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0"
+                                                    Style="{StaticResource ArborynSubtleButton}"
+                                                    Click="OnExcludeRemoveClick"
+                                                    Padding="6,2"
+                                                    ToolTipService.ToolTip="Retirer">
+                                                <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                                          Glyph="&#xE711;" FontSize="10" />
+                                            </Button>
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{x:Bind}"
+                                                       Style="{StaticResource ArborynBodyText}"
+                                                       Foreground="{ThemeResource ArborynTextPrimaryBrush}"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Margin="8,0,0,0" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </Border>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Click="OnAddExcludeFolderClick">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                              Glyph="&#xE710;" FontSize="12" />
+                                    <TextBlock Text="Ajouter un dossier…" />
+                                </StackPanel>
+                            </Button>
+                            <TextBox x:Name="ExcludePatternBox" MinWidth="320"
+                                     PlaceholderText="ou un motif : C:\Users\*\Downloads"
+                                     KeyDown="OnExcludePatternKeyDown" />
+                            <Button Content="Ajouter le motif" Click="OnAddExcludePatternClick" />
                         </StackPanel>
                     </StackPanel>
 

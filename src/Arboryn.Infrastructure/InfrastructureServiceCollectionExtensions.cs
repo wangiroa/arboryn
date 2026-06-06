@@ -26,6 +26,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IFileHashStore>(sp => sp.GetRequiredService<SqliteFileInstanceRepository>());
         services.AddSingleton<IFileInstanceLinker>(sp => sp.GetRequiredService<SqliteFileInstanceRepository>());
         services.AddSingleton<IPerceptualHashStore>(sp => sp.GetRequiredService<SqliteFileInstanceRepository>());
+        services.AddSingleton<IAudioFingerprintStore>(sp => sp.GetRequiredService<SqliteFileInstanceRepository>());
         services.AddSingleton<ILogicalFileRepository, SqliteLogicalFileRepository>();
         services.AddSingleton<IFileMetadataRepository, SqliteFileMetadataRepository>();
         services.AddSingleton<IOperationJournal, SqliteOperationJournal>();
@@ -39,8 +40,21 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IContentMetadataReader, EpubMetadataReader>();
         services.AddSingleton<IContentMetadataReader, ImageMetadataReader>();
 
-        // Empreinte perceptuelle d'images (Inc 5).
-        services.AddSingleton<IImagePerceptualHasher, ImageSharpPerceptualHasher>();
+        // Outils externes embarqués (fpcalc, ffmpeg) : tools/ → PATH.
+        services.AddSingleton(new ExternalToolResolver(AppContext.BaseDirectory));
+
+        // Empreintes perceptuelles (Inc 5) — registre par catégorie : image (pHash),
+        // vidéo (pHash agrégé des keyframes via ffmpeg).
+        services.AddSingleton<IPerceptualHasher, ImageSharpPerceptualHasher>();
+        services.AddSingleton<IVideoKeyframeExtractor, FfmpegKeyframeExtractor>();
+        services.AddSingleton<IPerceptualHasher, VideoPerceptualHasher>();
+
+        // Empreinte acoustique (Inc 5) — fpcalc embarqué (tools/) ou présent dans le PATH.
+        services.AddSingleton<IAudioFingerprinter, FpcalcAudioFingerprinter>();
+
+        // Taxonomie canonique (Inc 6) — moteur de templates + dépôt.
+        services.AddSingleton<ITemplateRenderer, Templates.ScribanTemplateRenderer>();
+        services.AddSingleton<ITaxonomyRepository, SqliteTaxonomyRepository>();
         return services;
     }
 }

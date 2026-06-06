@@ -13,7 +13,7 @@ namespace Arboryn.Infrastructure.Persistence;
 /// s'appuie sur l'index <c>idx_file_instances_canonical_size</c>.
 /// </summary>
 public sealed class SqliteFileInstanceRepository
-    : IFileInstanceRepository, IFileHashStore, IFileInstanceLinker, IPerceptualHashStore
+    : IFileInstanceRepository, IFileHashStore, IFileInstanceLinker, IPerceptualHashStore, IAudioFingerprintStore
 {
     private readonly DatabaseFactory _databaseFactory;
 
@@ -42,6 +42,10 @@ public sealed class SqliteFileInstanceRepository
                                       WHEN file_instances.size <> excluded.size
                                         OR file_instances.modified_at <> excluded.modified_at
                                       THEN NULL ELSE file_instances.phash END,
+                chromaprint     = CASE
+                                      WHEN file_instances.size <> excluded.size
+                                        OR file_instances.modified_at <> excluded.modified_at
+                                      THEN NULL ELSE file_instances.chromaprint END,
                 status          = 'active',
                 last_seen_at    = datetime('now')
             RETURNING id;
@@ -266,6 +270,74 @@ public sealed class SqliteFileInstanceRepository
             .ToList();
     }
 
+    // --- IAudioFingerprintStore ----------------------------------------------
+
+    public async Task<IReadOnlyList<FileInstanceRecord>> GetWithoutFingerprintAsync(
+        VolumeId volumeId, FilePath? underRoot, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id             AS Id,
+                   volume_id      AS VolumeId,
+                   relative_path  AS RelativePath,
+                   canonical_name AS CanonicalName,
+                   size           AS Size,
+                   modified_at    AS ModifiedAt
+            FROM file_instances
+            WHERE volume_id = @VolumeId AND status = 'active' AND chromaprint IS NULL
+              AND (@Root IS NULL OR substr(lower(relative_path), 1, @RootLen) = @Root)
+            ORDER BY canonical_name;
+            """;
+
+        var (root, rootLen) = RootFilter(underRoot);
+
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<InstanceRow>(new CommandDefinition(
+            sql,
+            new { VolumeId = volumeId.Value, Root = root, RootLen = rootLen },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return rows.Select(Map).ToList();
+    }
+
+    public async Task SetAsync(FileInstanceId id, AudioFingerprint fingerprint, CancellationToken cancellationToken)
+    {
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "UPDATE file_instances SET chromaprint = @Fingerprint WHERE id = @Id;",
+            new { Fingerprint = fingerprint.Encode(), Id = id.Value },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<AudioFingerprintedInstance>> GetFingerprintedAsync(
+        VolumeId volumeId, FilePath? underRoot, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id             AS Id,
+                   volume_id      AS VolumeId,
+                   relative_path  AS RelativePath,
+                   canonical_name AS CanonicalName,
+                   size           AS Size,
+                   modified_at    AS ModifiedAt,
+                   chromaprint    AS Chromaprint
+            FROM file_instances
+            WHERE volume_id = @VolumeId AND status = 'active' AND chromaprint IS NOT NULL
+              AND (@Root IS NULL OR substr(lower(relative_path), 1, @RootLen) = @Root)
+            ORDER BY canonical_name;
+            """;
+
+        var (root, rootLen) = RootFilter(underRoot);
+
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<FingerprintRow>(new CommandDefinition(
+            sql,
+            new { VolumeId = volumeId.Value, Root = root, RootLen = rootLen },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return rows
+            .Select(r => new AudioFingerprintedInstance(MapInstance(r), AudioFingerprint.Decode(r.Chromaprint)))
+            .ToList();
+    }
+
     private static (string? Root, int RootLen) RootFilter(FilePath? underRoot)
     {
         if (underRoot is { } r)
@@ -293,6 +365,14 @@ public sealed class SqliteFileInstanceRepository
         r.Size,
         DateTime.Parse(r.ModifiedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
 
+    private static FileInstanceRecord MapInstance(FingerprintRow r) => new(
+        new FileInstanceId(r.Id),
+        new VolumeId(r.VolumeId),
+        FilePath.From(r.RelativePath),
+        new CanonicalName(r.CanonicalName),
+        r.Size,
+        DateTime.Parse(r.ModifiedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
+
     private static string ToIso(DateTime value) => value.ToString("O", CultureInfo.InvariantCulture);
 
     private sealed record InstanceRow(
@@ -311,4 +391,13 @@ public sealed class SqliteFileInstanceRepository
         long Size,
         string ModifiedAt,
         string Phash);
+
+    private sealed record FingerprintRow(
+        string Id,
+        string VolumeId,
+        string RelativePath,
+        string CanonicalName,
+        long Size,
+        string ModifiedAt,
+        string Chromaprint);
 }

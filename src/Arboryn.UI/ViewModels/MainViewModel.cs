@@ -23,6 +23,7 @@ namespace Arboryn.UI.ViewModels;
 public sealed class MainViewModel : INotifyPropertyChanged
 {
     private const string PriorityDirectoriesKey = "priority_directories";
+    private const string ExcludedDirectoriesKey = "excluded_directories";
     private const string PreferDeeperKey = "prefer_deeper";
     private const string FuzzyThresholdKey = "fuzzy_threshold";
 
@@ -31,6 +32,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly DetectFuzzyDuplicatesHandler _fuzzyHandler;
     private readonly ConfirmByHashHandler _hashHandler;
     private readonly PromoteByHashHandler _promoteHandler;
+    private readonly ComputePerceptualHashesHandler _computePerceptualHandler;
+    private readonly DetectPerceptualDuplicatesHandler _detectPerceptualHandler;
     private readonly ClearCatalogHandler _clearHandler;
     private readonly DeleteFilesHandler _deleteHandler;
     private readonly UndoLastBatchHandler _undoHandler;
@@ -40,11 +43,25 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _statusText = "Choisissez un dossier à analyser.";
     private string _currentFolder = "(aucun dossier analysé)";
     private bool _isScanning;
+    private bool _isDeleting;
     private bool _detectWholeCatalog;
     private bool _preferDeeper = true;
     private double _fuzzyThreshold = 0.85;
     private CancellationTokenSource? _cts;
     private FilePath? _lastRoot;
+
+    // Options de détection choisies AVANT le scan ; appliquées à chaque (re-)scan.
+    private bool _detectExact = true;
+    private bool _detectFuzzy;
+    private bool _detectPerceptual;
+
+    // Dossier choisi (potentiellement pas encore scanné) et indicateur de scan déjà effectué.
+    private string? _pendingFolderPath;
+    private bool _pendingScanned;
+
+    /// <summary>Tous les groupes détectés (source de vérité), triés par espace récupérable décroissant.</summary>
+    private readonly List<DuplicateGroupItem> _allGroups = new();
+    private MediaFilterOption _selectedMediaFilter;
 
     public MainViewModel(
         ScanDirectoryHandler scanHandler,
@@ -52,6 +69,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         DetectFuzzyDuplicatesHandler fuzzyHandler,
         ConfirmByHashHandler hashHandler,
         PromoteByHashHandler promoteHandler,
+        ComputePerceptualHashesHandler computePerceptualHandler,
+        DetectPerceptualDuplicatesHandler detectPerceptualHandler,
         ClearCatalogHandler clearHandler,
         DeleteFilesHandler deleteHandler,
         UndoLastBatchHandler undoHandler,
@@ -63,11 +82,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _fuzzyHandler = fuzzyHandler;
         _hashHandler = hashHandler;
         _promoteHandler = promoteHandler;
+        _computePerceptualHandler = computePerceptualHandler;
+        _detectPerceptualHandler = detectPerceptualHandler;
         _clearHandler = clearHandler;
         _deleteHandler = deleteHandler;
         _undoHandler = undoHandler;
         _settings = settings;
         _logger = logger;
+        _selectedMediaFilter = MediaFilters[0];
     }
 
     /// <summary>
@@ -102,6 +124,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     PriorityDirectories.Add(directory);
                 }
             }
+
+            var excludedJson = await _settings.GetAsync(ExcludedDirectoriesKey, CancellationToken.None);
+            if (excludedJson is not null)
+            {
+                var directories = JsonSerializer.Deserialize<List<string>>(excludedJson) ?? new List<string>();
+                ExcludedDirectories.Clear();
+                foreach (var directory in directories)
+                {
+                    ExcludedDirectories.Add(directory);
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -120,6 +153,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             var json = JsonSerializer.Serialize(PriorityDirectories.ToList());
             await _settings.SetAsync(PriorityDirectoriesKey, json, CancellationToken.None);
+            var excludedJson = JsonSerializer.Serialize(ExcludedDirectories.ToList());
+            await _settings.SetAsync(ExcludedDirectoriesKey, excludedJson, CancellationToken.None);
             await _settings.SetAsync(PreferDeeperKey, _preferDeeper ? "true" : "false", CancellationToken.None);
         }
         catch (Exception ex)
@@ -128,10 +163,64 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>Groupes effectivement affichés : projection filtrée de <see cref="_allGroups"/> par type de média.</summary>
     public ObservableCollection<DuplicateGroupItem> Groups { get; } = new();
+
+    /// <summary>Options de filtre par type de média (« Tous les types » en tête = pas de filtrage).</summary>
+    public IReadOnlyList<MediaFilterOption> MediaFilters { get; } = new[]
+    {
+        new MediaFilterOption("Tous les types", null),
+        new MediaFilterOption("Audio (musique + livres audio)", MediaFilterType.Audio),
+        new MediaFilterOption("Vidéo", MediaFilterType.Video),
+        new MediaFilterOption("Photos", MediaFilterType.Photo),
+        new MediaFilterOption("BD", MediaFilterType.Comic),
+        new MediaFilterOption("Documents bureautiques", MediaFilterType.Document),
+        new MediaFilterOption("Ebooks", MediaFilterType.Ebook),
+    };
+
+    /// <summary>Filtre par type de média actif ; sa modification reconstruit la liste affichée.</summary>
+    public MediaFilterOption SelectedMediaFilter
+    {
+        get => _selectedMediaFilter;
+        set
+        {
+            if (value is not null && SetProperty(ref _selectedMediaFilter, value))
+            {
+                RebuildFilteredView();
+            }
+        }
+    }
+
+    /// <summary>Nombre total de groupes détectés, tous types confondus (avant filtrage).</summary>
+    public int TotalGroupCount => _allGroups.Count;
+
+    /// <summary>Reconstruit <see cref="Groups"/> à partir de <see cref="_allGroups"/> selon le filtre courant.</summary>
+    private void RebuildFilteredView()
+    {
+        var filter = _selectedMediaFilter?.Type;
+
+        Groups.Clear();
+        foreach (var group in _allGroups)
+        {
+            if (group.Matches(filter))
+            {
+                Groups.Add(group);
+            }
+        }
+
+        OnPropertyChanged(nameof(Groups));
+        OnPropertyChanged(nameof(TotalGroupCount));
+    }
 
     /// <summary>Répertoires prioritaires, du plus prioritaire au moins. Ordre = hiérarchie.</summary>
     public ObservableCollection<string> PriorityDirectories { get; } = new();
+
+    /// <summary>
+    /// Répertoires (ou motifs) à écarter par défaut : quand un même fichier existe ailleurs, la copie
+    /// située sous l'un d'eux est cochée pour suppression. L'ordre est sans importance. Accepte les
+    /// motifs génériques (<c>C:\…\Downloads\*</c>, <c>C:\Users\*\Downloads</c>).
+    /// </summary>
+    public ObservableCollection<string> ExcludedDirectories { get; } = new();
 
     /// <summary>Répertoires récurrents suggérés (présents dans plusieurs groupes), hors priorités déjà choisies.</summary>
     public ObservableCollection<string> SuggestedDirectories { get; } = new();
@@ -175,6 +264,30 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void RemovePriorityDirectory(string directory)
     {
         if (PriorityDirectories.Remove(directory))
+        {
+            ApplyPrioritySelectionToGroups();
+            PersistPrioritySettings();
+        }
+    }
+
+    /// <summary>Ajoute un répertoire (ou motif) à écarter par défaut et ré-applique la sélection.</summary>
+    public void AddExcludedDirectory(string directory)
+    {
+        var normalized = NormalizeDirectory(directory);
+        if (normalized.Length == 0 ||
+            ExcludedDirectories.Any(d => string.Equals(d, normalized, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        ExcludedDirectories.Add(normalized);
+        ApplyPrioritySelectionToGroups();
+        PersistPrioritySettings();
+    }
+
+    public void RemoveExcludedDirectory(string directory)
+    {
+        if (ExcludedDirectories.Remove(directory))
         {
             ApplyPrioritySelectionToGroups();
             PersistPrioritySettings();
@@ -230,10 +343,29 @@ public sealed class MainViewModel : INotifyPropertyChanged
             {
                 OnPropertyChanged(nameof(CanScan));
                 OnPropertyChanged(nameof(CanCancel));
-                OnPropertyChanged(nameof(CanRescan));
+                OnPropertyChanged(nameof(CanRunScan));
+                OnPropertyChanged(nameof(IsBusy));
             }
         }
     }
+
+    /// <summary>Vrai pendant l'envoi des fichiers à la corbeille (suppression en cours).</summary>
+    public bool IsDeleting
+    {
+        get => _isDeleting;
+        private set
+        {
+            if (SetProperty(ref _isDeleting, value))
+            {
+                OnPropertyChanged(nameof(CanScan));
+                OnPropertyChanged(nameof(CanRunScan));
+                OnPropertyChanged(nameof(IsBusy));
+            }
+        }
+    }
+
+    /// <summary>Vrai dès qu'une opération longue est en cours (scan ou suppression) : pilote l'indicateur d'activité.</summary>
+    public bool IsBusy => _isScanning || _isDeleting;
 
     /// <summary>Dossier analysé en dernier (affiché à l'écran).</summary>
     public string CurrentFolder
@@ -242,18 +374,74 @@ public sealed class MainViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _currentFolder, value);
     }
 
-    /// <summary>Le bouton de scan est actif tant qu'aucun scan n'est en cours.</summary>
-    public bool CanScan => !_isScanning;
+    /// <summary>Les actions principales sont actives tant qu'aucune opération longue n'est en cours.</summary>
+    public bool CanScan => !_isScanning && !_isDeleting;
 
     /// <summary>Le bouton d'annulation est actif uniquement pendant un scan.</summary>
     public bool CanCancel => _isScanning;
 
-    /// <summary>Re-scan possible si un dossier a déjà été analysé et qu'aucun scan n'est en cours.</summary>
-    public bool CanRescan => !_isScanning && _lastRoot is not null;
+    /// <summary>Détecter les doublons exacts (même nom canonique + taille). Option par défaut.</summary>
+    public bool DetectExact
+    {
+        get => _detectExact;
+        set
+        {
+            if (SetProperty(ref _detectExact, value))
+            {
+                OnPropertyChanged(nameof(CanRunScan));
+            }
+        }
+    }
 
-    /// <summary>Relance le scan du dernier dossier analysé.</summary>
-    public Task RescanAsync()
-        => _lastRoot is { } root ? ScanAndDetectAsync(root.Value) : Task.CompletedTask;
+    /// <summary>Détecter les doublons flous (noms proches), à confirmer ensuite par hash.</summary>
+    public bool DetectFuzzy
+    {
+        get => _detectFuzzy;
+        set
+        {
+            if (SetProperty(ref _detectFuzzy, value))
+            {
+                OnPropertyChanged(nameof(CanRunScan));
+            }
+        }
+    }
+
+    /// <summary>Détecter les doublons perceptuels (images recompressées / redimensionnées).</summary>
+    public bool DetectPerceptual
+    {
+        get => _detectPerceptual;
+        set
+        {
+            if (SetProperty(ref _detectPerceptual, value))
+            {
+                OnPropertyChanged(nameof(CanRunScan));
+            }
+        }
+    }
+
+    /// <summary>Au moins une option de détection est sélectionnée.</summary>
+    private bool HasAnyDetectionOption => _detectExact || _detectFuzzy || _detectPerceptual;
+
+    /// <summary>Le bouton de scan est actif si un dossier est choisi, une option cochée, et rien n'est en cours.</summary>
+    public bool CanRunScan =>
+        !_isScanning && !_isDeleting && _pendingFolderPath is not null && HasAnyDetectionOption;
+
+    /// <summary>Libellé du bouton de scan : « Scanner » avant le premier passage, « Re-scanner » ensuite.</summary>
+    public string ScanButtonLabel => _pendingScanned ? "Re-scanner" : "Scanner";
+
+    /// <summary>Mémorise le dossier choisi sans le scanner, et réinitialise l'état « déjà scanné ».</summary>
+    public void SelectFolder(string folderPath)
+    {
+        _pendingFolderPath = folderPath;
+        _pendingScanned = false;
+        CurrentFolder = folderPath;
+        OnPropertyChanged(nameof(CanRunScan));
+        OnPropertyChanged(nameof(ScanButtonLabel));
+    }
+
+    /// <summary>(Re-)scanne le dossier choisi avec les options de détection cochées.</summary>
+    public Task RunScanAsync()
+        => _pendingFolderPath is { } folder ? ScanAndDetectAsync(folder) : Task.CompletedTask;
 
     /// <summary>
     /// Portée de la détection : <c>false</c> = uniquement les fichiers du scan courant ;
@@ -278,12 +466,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private async Task DeleteAsync(IReadOnlyList<DuplicateMemberItem> selected)
     {
-        if (IsScanning || selected.Count == 0)
+        if (IsScanning || IsDeleting || selected.Count == 0)
         {
             return;
         }
 
         var toDelete = selected.Select(m => new FileToDelete(m.Id, m.Path)).ToList();
+
+        IsDeleting = true;
+        StatusText = $"Suppression en cours… {toDelete.Count} fichier(s) vers la corbeille.";
 
         try
         {
@@ -304,13 +495,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
             _logger.LogError(ex, "Échec de la suppression");
             StatusText = $"Erreur : {ex.Message}";
         }
+        finally
+        {
+            IsDeleting = false;
+        }
     }
 
     private void ApplyDeletionToGroups(ISet<string> deletedMemberIds)
     {
-        for (var i = Groups.Count - 1; i >= 0; i--)
+        for (var i = _allGroups.Count - 1; i >= 0; i--)
         {
-            var group = Groups[i];
+            var group = _allGroups[i];
             if (!group.Members.Any(m => deletedMemberIds.Contains(m.Id.Value)))
             {
                 continue;
@@ -319,34 +514,41 @@ public sealed class MainViewModel : INotifyPropertyChanged
             var updated = group.WithoutMembers(deletedMemberIds);
             if (updated is null)
             {
-                Groups.RemoveAt(i);
+                _allGroups.RemoveAt(i);
             }
             else
             {
-                Groups[i] = updated;
+                _allGroups[i] = updated;
             }
         }
+
+        RebuildFilteredView();
     }
 
     private string RemainingSummary()
     {
-        var total = Groups.Sum(g => g.ReclaimableBytes);
-        return Groups.Count == 0
+        var total = _allGroups.Sum(g => g.ReclaimableBytes);
+        return _allGroups.Count == 0
             ? "Plus aucun doublon."
-            : $"{Groups.Count} groupe(s) restant(s) — {SizeFormatter.Humanize(total)} récupérables.";
+            : $"{_allGroups.Count} groupe(s) restant(s) — {SizeFormatter.Humanize(total)} récupérables.";
     }
 
-    /// <summary>Annule la dernière suppression (restaure depuis la corbeille) et rafraîchit.</summary>
+    /// <summary>Annule la dernière suppression (restaure depuis la corbeille) et re-détecte.</summary>
     public async Task UndoLastDeleteAsync()
     {
-        if (IsScanning)
+        if (IsScanning || IsDeleting)
         {
             return;
         }
 
+        IsScanning = true;
+        StatusText = "Restauration depuis la corbeille…";
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
         try
         {
-            var result = await Task.Run(() => _undoHandler.ExecuteAsync());
+            var result = await Task.Run(() => _undoHandler.ExecuteAsync(), token);
             if (!result.HadBatch)
             {
                 StatusText = "Rien à annuler.";
@@ -356,68 +558,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
             var prefix = result.Failed == 0
                 ? $"{result.Restored} fichier(s) restauré(s). "
                 : $"{result.Restored} restauré(s), {result.Failed} échec(s). ";
-            await PopulateGroupsAsync(prefix);
+            await DetectSelectedAsync(prefix, token);
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText = "Restauration annulée.";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Échec de l'annulation");
-            StatusText = $"Erreur : {ex.Message}";
-        }
-    }
-
-    /// <summary>
-    /// Recherche les doublons flous (à la demande) et les ajoute à la liste, sans
-    /// toucher aux groupes exacts existants ni à leurs sélections.
-    /// </summary>
-    public async Task DetectFuzzyAsync()
-    {
-        if (IsScanning)
-        {
-            return;
-        }
-
-        IsScanning = true;
-        StatusText = "Recherche des doublons flous…";
-        _cts = new CancellationTokenSource();
-        var token = _cts.Token;
-
-        try
-        {
-            var underRoot = DetectWholeCatalog ? null : _lastRoot;
-            var threshold = _fuzzyThreshold;
-
-            var views = await Task.Run(
-                () => _fuzzyHandler.ExecuteAsync(VolumeId.Default, underRoot, threshold, token), token);
-
-            // Remplace les anciens groupes flous, préserve les groupes exacts (et leurs sélections).
-            for (var i = Groups.Count - 1; i >= 0; i--)
-            {
-                if (Groups[i].Kind == DuplicateGroupKind.FuzzyName)
-                {
-                    Groups.RemoveAt(i);
-                }
-            }
-
-            var newItems = views.Select(v => new DuplicateGroupItem(v)).ToList();
-            ApplyPrioritySelectionTo(newItems);
-            foreach (var item in newItems)
-            {
-                Groups.Add(item);
-            }
-
-            ResortGroups();
-
-            StatusText = newItems.Count == 0
-                ? "Aucun doublon flou supplémentaire."
-                : $"{newItems.Count} groupe(s) flou(s) trouvé(s). Confirmez par hash pour distinguer copies et variantes.";
-        }
-        catch (OperationCanceledException)
-        {
-            StatusText = "Recherche annulée.";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Échec de la détection floue");
             StatusText = $"Erreur : {ex.Message}";
         }
         finally
@@ -437,7 +586,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// </summary>
     public async Task ConfirmByHashAsync(DuplicateGroupItem group)
     {
-        if (IsScanning)
+        if (IsScanning || IsDeleting)
         {
             return;
         }
@@ -461,6 +610,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             var membersById = group.Members.ToDictionary(m => m.Id.Value);
             var prefixes = PriorityDirectories.ToList();
+            var excluded = ExcludedDirectories.ToList();
             var identicalToDelete = 0;
             var distinctVariants = 0;
 
@@ -479,7 +629,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
                     var candidates = cluster
                         .Select(m => new KeepCandidate(m.Directory, m.Size, System.IO.Path.GetFileName(m.DisplayPath)))
                         .ToList();
-                    var keepIndex = PrioritySelection.ChooseKeepIndex(candidates, prefixes, _preferDeeper);
+                    var keepIndex = PrioritySelection.ChooseKeepIndex(candidates, prefixes, _preferDeeper, excluded);
                     for (var i = 0; i < cluster.Count; i++)
                     {
                         cluster[i].ShouldDelete = i != keepIndex;
@@ -518,7 +668,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// <summary>Vide le catalogue du volume par défaut.</summary>
     public async Task ClearCatalogAsync()
     {
-        if (IsScanning)
+        if (IsScanning || IsDeleting)
         {
             return;
         }
@@ -526,7 +676,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         try
         {
             await _clearHandler.ExecuteAsync(VolumeId.Default);
-            Groups.Clear();
+            _allGroups.Clear();
+            RebuildFilteredView();
             StatusText = "Catalogue vidé.";
         }
         catch (Exception ex)
@@ -538,13 +689,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public async Task ScanAndDetectAsync(string folderPath)
     {
-        if (IsScanning)
+        if (IsScanning || IsDeleting)
         {
             return;
         }
 
         IsScanning = true;
-        Groups.Clear();
+        _allGroups.Clear();
+        RebuildFilteredView();
         StatusText = "Analyse en cours…";
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
@@ -553,8 +705,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             var root = FilePath.From(folderPath);
             _lastRoot = root;
+            _pendingFolderPath = root.Value;
             CurrentFolder = root.Value;
-            OnPropertyChanged(nameof(CanRescan));
 
             // Progress créé sur le thread UI : ses rappels sont marshalés vers l'UI,
             // ce qui permet de lancer le travail lourd sur un thread de fond.
@@ -563,7 +715,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             await Task.Run(() => _scanHandler.ExecuteAsync(root, VolumeId.Default, progress, token), token);
 
-            await PopulateGroupsAsync(cancellationToken: token);
+            await DetectSelectedAsync(cancellationToken: token);
+
+            _pendingScanned = true;
+            OnPropertyChanged(nameof(ScanButtonLabel));
         }
         catch (OperationCanceledException)
         {
@@ -583,41 +738,71 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// (Re)détecte les doublons selon la portée courante, trie par espace récupérable
-    /// décroissant, met à jour la liste et le statut (préfixé par un message d'action).
+    /// Détecte les doublons selon les options cochées (exacts / flous / perceptuels) et la portée
+    /// courante, reconstruit entièrement la liste des groupes, trie par espace récupérable décroissant
+    /// et met à jour le statut (éventuellement préfixé par un message d'action, ex. restauration).
     /// </summary>
-    private async Task PopulateGroupsAsync(string? prefix = null, CancellationToken cancellationToken = default)
+    private async Task DetectSelectedAsync(string? prefix = null, CancellationToken cancellationToken = default)
     {
         var underRoot = DetectWholeCatalog ? null : _lastRoot;
+        var detected = new List<DuplicateGroupItem>();
+        var parts = new List<string>();
 
-        var views = await Task.Run(
-            () => _detectHandler.ExecuteDetailedAsync(VolumeId.Default, underRoot, cancellationToken), cancellationToken);
-
-        var ordered = views
-            .Select(v => new DuplicateGroupItem(v))
-            .OrderByDescending(g => g.ReclaimableBytes)
-            .ToList();
-
-        Groups.Clear();
-        foreach (var item in ordered)
+        if (_detectExact)
         {
-            Groups.Add(item);
+            StatusText = "Détection des doublons exacts…";
+            var views = await Task.Run(
+                () => _detectHandler.ExecuteDetailedAsync(VolumeId.Default, underRoot, cancellationToken), cancellationToken);
+            var items = views.Select(v => new DuplicateGroupItem(v)).ToList();
+            detected.AddRange(items);
+            parts.Add($"{items.Count} exact(s)");
         }
+
+        if (_detectFuzzy)
+        {
+            StatusText = "Détection des doublons flous…";
+            var views = await Task.Run(
+                () => _fuzzyHandler.ExecuteAsync(VolumeId.Default, underRoot, _fuzzyThreshold, cancellationToken), cancellationToken);
+            var items = views.Select(v => new DuplicateGroupItem(v)).ToList();
+            detected.AddRange(items);
+            parts.Add($"{items.Count} flou(s)");
+        }
+
+        if (_detectPerceptual)
+        {
+            var progress = new Progress<PerceptualHashProgress>(
+                p => StatusText = $"Empreintes perceptuelles : {p.Hashed} image(s) analysée(s)…");
+            await Task.Run(
+                () => _computePerceptualHandler.ExecuteAsync(VolumeId.Default, underRoot, progress, cancellationToken), cancellationToken);
+
+            StatusText = "Détection des doublons perceptuels…";
+            var views = await Task.Run(
+                () => _detectPerceptualHandler.ExecuteAsync(
+                    VolumeId.Default, underRoot, DetectPerceptualDuplicatesHandler.DefaultMaxDistance, cancellationToken),
+                cancellationToken);
+            var items = views.Select(v => new DuplicateGroupItem(v)).ToList();
+            detected.AddRange(items);
+            parts.Add($"{items.Count} perceptuel(s)");
+        }
+
+        _allGroups.Clear();
+        _allGroups.AddRange(detected.OrderByDescending(g => g.ReclaimableBytes));
 
         RefreshSuggestions();
         ApplyPrioritySelectionToGroups();
+        RebuildFilteredView();
 
-        var totalReclaimable = ordered.Sum(g => g.ReclaimableBytes);
-        var summary = ordered.Count == 0
-            ? "Aucun doublon exact trouvé."
-            : $"{ordered.Count} groupe(s) — {SizeFormatter.Humanize(totalReclaimable)} récupérables.";
+        var totalReclaimable = _allGroups.Sum(g => g.ReclaimableBytes);
+        var summary = _allGroups.Count == 0
+            ? "Aucun doublon trouvé."
+            : $"{string.Join(", ", parts)} — {_allGroups.Count} groupe(s), {SizeFormatter.Humanize(totalReclaimable)} récupérables.";
         StatusText = (prefix ?? string.Empty) + summary;
     }
 
     /// <summary>Recalcule les répertoires suggérés (récurrents, hors priorités déjà choisies).</summary>
     private void RefreshSuggestions()
     {
-        var groupDirectorySets = Groups
+        var groupDirectorySets = _allGroups
             .Select(g => (IReadOnlyCollection<string>)g.Members.Select(m => m.Directory).ToList())
             .ToList();
 
@@ -634,35 +819,25 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     /// <summary>Coche / décoche les copies de chaque groupe selon les répertoires prioritaires ordonnés.</summary>
-    private void ApplyPrioritySelectionToGroups() => ApplyPrioritySelectionTo(Groups);
+    private void ApplyPrioritySelectionToGroups() => ApplyPrioritySelectionTo(_allGroups);
 
     /// <summary>Applique la sélection par défaut (priorité + score) à un sous-ensemble de groupes.</summary>
     private void ApplyPrioritySelectionTo(IEnumerable<DuplicateGroupItem> groups)
     {
         var prefixes = PriorityDirectories.ToList();
+        var excluded = ExcludedDirectories.ToList();
 
         foreach (var group in groups)
         {
             var candidates = group.Members
                 .Select(m => new KeepCandidate(m.Directory, m.Size, System.IO.Path.GetFileName(m.DisplayPath)))
                 .ToList();
-            var keepIndex = PrioritySelection.ChooseKeepIndex(candidates, prefixes, _preferDeeper);
+            var keepIndex = PrioritySelection.ChooseKeepIndex(candidates, prefixes, _preferDeeper, excluded);
 
             for (var i = 0; i < group.Members.Count; i++)
             {
                 group.Members[i].ShouldDelete = i != keepIndex;
             }
-        }
-    }
-
-    /// <summary>Réordonne la liste par espace récupérable décroissant (instances réutilisées).</summary>
-    private void ResortGroups()
-    {
-        var sorted = Groups.OrderByDescending(g => g.ReclaimableBytes).ToList();
-        Groups.Clear();
-        foreach (var group in sorted)
-        {
-            Groups.Add(group);
         }
     }
 

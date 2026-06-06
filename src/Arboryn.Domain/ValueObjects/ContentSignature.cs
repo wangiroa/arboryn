@@ -24,5 +24,12 @@ public readonly record struct ContentSignature(ContentSignatureKind Kind, string
     public static ContentSignature FromPerceptualHash(PerceptualHash hash)
         => new(ContentSignatureKind.PHash, hash.ToHex());
 
+    /// <summary>
+    /// Signature acoustique — identité d'un groupe d'enregistrements du même morceau.
+    /// La valeur est l'empreinte courte stable du représentant du groupe.
+    /// </summary>
+    public static ContentSignature FromChromaprint(AudioFingerprint fingerprint)
+        => new(ContentSignatureKind.Chromaprint, fingerprint.StableDigest());
+
     public override string ToString() => $"{Kind}:{Value}";
 }

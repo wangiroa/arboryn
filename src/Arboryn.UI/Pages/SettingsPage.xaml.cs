@@ -3,8 +3,10 @@ using Arboryn.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.Storage.Pickers;
+using Windows.System;
 using WinRT.Interop;
 
 namespace Arboryn.UI.Pages;
@@ -50,6 +52,61 @@ public sealed partial class SettingsPage : Page
         if (SuggestionsCombo.SelectedItem is string directory)
         {
             ViewModel.AddPriorityDirectory(directory);
+        }
+    }
+
+    private void OnAddPriorityPatternClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.AddPriorityDirectory(PriorityPatternBox.Text);
+        PriorityPatternBox.Text = string.Empty;
+    }
+
+    private void OnPriorityPatternKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            ViewModel.AddPriorityDirectory(PriorityPatternBox.Text);
+            PriorityPatternBox.Text = string.Empty;
+        }
+    }
+
+    private async void OnAddExcludeFolderClick(object sender, RoutedEventArgs e)
+    {
+        var picker = new FolderPicker { SuggestedStartLocation = PickerLocationId.ComputerFolder };
+        picker.FileTypeFilter.Add("*");
+        var window = (Microsoft.UI.Xaml.Application.Current as App)?.RootShell;
+        if (window is null)
+        {
+            return;
+        }
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder is not null)
+        {
+            ViewModel.AddExcludedDirectory(folder.Path);
+        }
+    }
+
+    private void OnAddExcludePatternClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.AddExcludedDirectory(ExcludePatternBox.Text);
+        ExcludePatternBox.Text = string.Empty;
+    }
+
+    private void OnExcludePatternKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            ViewModel.AddExcludedDirectory(ExcludePatternBox.Text);
+            ExcludePatternBox.Text = string.Empty;
+        }
+    }
+
+    private void OnExcludeRemoveClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is string directory)
+        {
+            ViewModel.RemoveExcludedDirectory(directory);
         }
     }
 

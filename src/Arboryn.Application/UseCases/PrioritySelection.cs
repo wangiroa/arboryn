@@ -38,31 +38,40 @@ public static class PrioritySelection
     /// <list type="number">
     ///   <item>version la plus haute (suffixe <c>v2</c> / <c>_v3</c> / <c>V4</c>…) — prime sur tout ;</item>
     ///   <item>répertoire prioritaire le mieux classé ;</item>
+    ///   <item>copie hors d'un répertoire exclu (un répertoire exclu — ex. « Téléchargements » — est
+    ///         écarté par défaut quand une autre copie existe) ;</item>
     ///   <item>si <paramref name="useScore"/>, meilleur <see cref="PreferableScore"/> (profondeur, taille, nom) ;</item>
     ///   <item>première copie.</item>
     /// </list>
+    /// Les <paramref name="orderedPriorityPrefixes"/> comme les <paramref name="excludedPatterns"/>
+    /// acceptent des motifs génériques : un <c>*</c> remplace un segment, un <c>**</c> une profondeur
+    /// quelconque, et un suffixe <c>\*</c> désigne tout le sous-arbre (cf. <see cref="MatchesPattern"/>).
     /// </summary>
     public static int ChooseKeepIndex(
         IReadOnlyList<KeepCandidate> members,
         IReadOnlyList<string> orderedPriorityPrefixes,
-        bool useScore)
+        bool useScore,
+        IReadOnlyList<string>? excludedPatterns = null)
     {
         var best = 0;
         var bestVersion = ExtractVersion(members[0].Name);
         var bestRank = PriorityRank(members[0].Directory, orderedPriorityPrefixes);
+        var bestExcluded = IsExcluded(members[0].Directory, excludedPatterns);
         var bestScore = PreferableScore(members[0]);
 
         for (var i = 1; i < members.Count; i++)
         {
             var version = ExtractVersion(members[i].Name);
             var rank = PriorityRank(members[i].Directory, orderedPriorityPrefixes);
+            var excluded = IsExcluded(members[i].Directory, excludedPatterns);
             var score = PreferableScore(members[i]);
 
-            if (IsBetter(version, rank, score, bestVersion, bestRank, bestScore, useScore))
+            if (IsBetter(version, rank, excluded, score, bestVersion, bestRank, bestExcluded, bestScore, useScore))
             {
                 best = i;
                 bestVersion = version;
                 bestRank = rank;
+                bestExcluded = excluded;
                 bestScore = score;
             }
         }
@@ -71,8 +80,8 @@ public static class PrioritySelection
     }
 
     private static bool IsBetter(
-        int version, int rank, double score,
-        int bestVersion, int bestRank, double bestScore,
+        int version, int rank, bool excluded, double score,
+        int bestVersion, int bestRank, bool bestExcluded, double bestScore,
         bool useScore)
     {
         if (version != bestVersion)
@@ -85,7 +94,31 @@ public static class PrioritySelection
             return rank < bestRank;
         }
 
+        if (excluded != bestExcluded)
+        {
+            return !excluded;
+        }
+
         return useScore && score > bestScore;
+    }
+
+    /// <summary>Vrai si le répertoire correspond à au moins un motif d'exclusion.</summary>
+    private static bool IsExcluded(string directory, IReadOnlyList<string>? excludedPatterns)
+    {
+        if (excludedPatterns is null)
+        {
+            return false;
+        }
+
+        foreach (var pattern in excludedPatterns)
+        {
+            if (MatchesPattern(directory, pattern))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -156,12 +189,12 @@ public static class PrioritySelection
         return count;
     }
 
-    /// <summary>Rang du premier préfixe sous lequel se trouve le répertoire, sinon int.MaxValue.</summary>
+    /// <summary>Rang du premier motif auquel correspond le répertoire, sinon int.MaxValue.</summary>
     private static int PriorityRank(string directory, IReadOnlyList<string> orderedPrefixes)
     {
         for (var i = 0; i < orderedPrefixes.Count; i++)
         {
-            if (IsUnder(directory, orderedPrefixes[i]))
+            if (MatchesPattern(directory, orderedPrefixes[i]))
             {
                 return i;
             }
@@ -170,16 +203,85 @@ public static class PrioritySelection
         return int.MaxValue;
     }
 
-    /// <summary>Vrai si <paramref name="directory"/> est égal à, ou situé sous, <paramref name="prefix"/>.</summary>
-    private static bool IsUnder(string directory, string prefix)
+    /// <summary>
+    /// Vrai si <paramref name="directory"/> correspond au motif <paramref name="pattern"/>, ou est
+    /// situé sous lui. Le motif est interprété segment par segment :
+    /// <list type="bullet">
+    ///   <item>un segment littéral correspond au segment de même nom (insensible à la casse) ;</item>
+    ///   <item><c>*</c> dans un segment remplace n'importe quelle suite de caractères (ex. <c>Doc*</c>) ;</item>
+    ///   <item>un segment <c>**</c> absorbe une profondeur quelconque (ex. <c>C:\Users\**\Downloads</c>) ;</item>
+    ///   <item>un suffixe <c>\*</c> ou <c>\**</c> désigne le sous-arbre complet (ex. <c>C:\Livres\*</c>).</item>
+    /// </list>
+    /// Un motif sans caractère générique se comporte comme un préfixe d'arborescence (le répertoire
+    /// lui-même et tout ce qui se trouve dessous), conformément au comportement historique.
+    /// </summary>
+    public static bool MatchesPattern(string directory, string pattern)
     {
-        if (string.Equals(directory, prefix, StringComparison.OrdinalIgnoreCase))
+        var pat = NormalizePattern(pattern);
+        if (pat.Length == 0)
         {
-            return true;
+            return false;
         }
 
-        var withSeparator = prefix.EndsWith('\\') ? prefix : prefix + "\\";
-        return directory.StartsWith(withSeparator, StringComparison.OrdinalIgnoreCase);
+        var dirSegments = NormalizeForMatch(directory).Split('\\', StringSplitOptions.RemoveEmptyEntries);
+        var patSegments = pat.Split('\\', StringSplitOptions.RemoveEmptyEntries);
+        return PrefixMatch(dirSegments, 0, patSegments, 0);
+    }
+
+    /// <summary>
+    /// Vrai si <paramref name="pat"/> (à partir de <paramref name="pi"/>) correspond à un préfixe des
+    /// segments de <paramref name="dir"/> (à partir de <paramref name="di"/>) : le répertoire peut être
+    /// plus profond que le motif (sémantique de sous-arbre). <c>**</c> absorbe 0..N segments.
+    /// </summary>
+    private static bool PrefixMatch(string[] dir, int di, string[] pat, int pi)
+    {
+        while (pi < pat.Length)
+        {
+            if (pat[pi] == "**")
+            {
+                for (var skip = 0; di + skip <= dir.Length; skip++)
+                {
+                    if (PrefixMatch(dir, di + skip, pat, pi + 1))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            if (di >= dir.Length ||
+                !System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(pat[pi], dir[di], ignoreCase: true))
+            {
+                return false;
+            }
+
+            di++;
+            pi++;
+        }
+
+        // Motif entièrement consommé : tout ce qui reste dans le répertoire est en sous-arbre.
+        return true;
+    }
+
+    /// <summary>Normalise un répertoire pour comparaison : séparateurs <c>\</c>, sans séparateur final.</summary>
+    private static string NormalizeForMatch(string directory)
+        => directory.Replace('/', '\\').TrimEnd('\\');
+
+    /// <summary>
+    /// Normalise un motif : séparateurs <c>\</c>, espaces et séparateur final retirés, et suffixe
+    /// de sous-arbre (<c>\*</c> / <c>\**</c>) retiré — un motif consommé désigne déjà le sous-arbre.
+    /// </summary>
+    private static string NormalizePattern(string pattern)
+    {
+        var s = pattern.Replace('/', '\\').Trim().TrimEnd('\\');
+
+        if (s.EndsWith(@"\**", StringComparison.Ordinal))
+        {
+            return s[..^3];
+        }
+
+        return s.EndsWith(@"\*", StringComparison.Ordinal) ? s[..^2] : s;
     }
 
     /// <summary>Profondeur d'arborescence : nombre de séparateurs dans le chemin.</summary>

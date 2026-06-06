@@ -31,6 +31,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IFileMetadataRepository, SqliteFileMetadataRepository>();
         services.AddSingleton<IOperationJournal, SqliteOperationJournal>();
         services.AddSingleton<IRecycleBin, RecycleBin>();
+        services.AddSingleton<IFileMover, FileSystemMover>();
         services.AddSingleton<ISettingsRepository, SqliteSettingsRepository>();
         services.AddSingleton<IFileHasher, Sha256FileHasher>();
 
@@ -55,6 +56,9 @@ public static class InfrastructureServiceCollectionExtensions
         // Taxonomie canonique (Inc 6) — moteur de templates + dépôt.
         services.AddSingleton<ITemplateRenderer, Templates.ScribanTemplateRenderer>();
         services.AddSingleton<ITaxonomyRepository, SqliteTaxonomyRepository>();
+
+        // Write-back de métadonnées dans le fichier (Inc 6) — par catégorie.
+        services.AddSingleton<IContentMetadataWriter, TagLibAudioMetadataWriter>();
         return services;
     }
 }

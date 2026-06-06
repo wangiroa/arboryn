@@ -24,6 +24,11 @@ public static class ApplicationServiceCollectionExtensions
         services.AddTransient<DetectAudioDuplicatesHandler>();
         services.AddTransient<PromoteAudioHandler>();
         services.AddTransient<CanonicalPathResolver>();
+        services.AddTransient<PlanUniformizationHandler>();
+        services.AddTransient<ExecuteUniformizationHandler>();
+        services.AddTransient<UndoUniformizationHandler>();
+        services.AddTransient<WriteBackMetadataHandler>();
+        services.AddTransient<UndoWriteBackMetadataHandler>();
         return services;
     }
 }

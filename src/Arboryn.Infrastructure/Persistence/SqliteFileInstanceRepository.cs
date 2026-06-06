@@ -158,6 +158,16 @@ public sealed class SqliteFileInstanceRepository
             cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
+    public async Task UpdatePathAsync(FileInstanceId id, FilePath newPath, CancellationToken cancellationToken)
+    {
+        var canonical = CanonicalName.From(System.IO.Path.GetFileName(newPath.Value));
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "UPDATE file_instances SET relative_path = @Path, canonical_name = @Canonical, last_seen_at = datetime('now') WHERE id = @Id;",
+            new { Path = newPath.Value, Canonical = canonical.Value, Id = id.Value },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+    }
+
     public Task MarkDeletedAsync(FileInstanceId id, CancellationToken cancellationToken)
         => SetStatusAsync(id, "deleted", cancellationToken);
 

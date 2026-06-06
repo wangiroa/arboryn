@@ -20,9 +20,9 @@ public sealed class SqliteOperationJournal : IOperationJournal
     {
         const string sql = """
             INSERT INTO operations
-                (id, kind, file_instance_id, old_path, new_path, status, batch_id, executed_at, created_at)
+                (id, kind, file_instance_id, old_path, new_path, old_metadata_json, status, batch_id, executed_at, created_at)
             VALUES
-                (@Id, @Kind, @FileInstanceId, @OldPath, @NewPath, @Status, @BatchId, @ExecutedAt, @CreatedAt);
+                (@Id, @Kind, @FileInstanceId, @OldPath, @NewPath, @OldMetadataJson, @Status, @BatchId, @ExecutedAt, @CreatedAt);
             """;
 
         await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -33,6 +33,7 @@ public sealed class SqliteOperationJournal : IOperationJournal
             FileInstanceId = operation.FileInstanceId.Value,
             OldPath = operation.OldPath?.Value,
             NewPath = operation.NewPath?.Value,
+            OldMetadataJson = operation.OldMetadataJson,
             Status = OperationEnums.ToDb(operation.Status),
             BatchId = operation.BatchId.Value,
             ExecutedAt = ToIso(operation.ExecutedAt),
@@ -58,19 +59,56 @@ public sealed class SqliteOperationJournal : IOperationJournal
         return batchId is null ? null : new BatchId(batchId);
     }
 
+    public async Task<BatchId?> GetLastUndoableUniformizationBatchAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT batch_id
+            FROM operations
+            WHERE kind IN ('move', 'rename') AND status = 'completed' AND batch_id IS NOT NULL
+            GROUP BY batch_id
+            ORDER BY MAX(COALESCE(executed_at, created_at)) DESC
+            LIMIT 1;
+            """;
+
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        var batchId = await connection.ExecuteScalarAsync<string?>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return batchId is null ? null : new BatchId(batchId);
+    }
+
+    public async Task<BatchId?> GetLastUndoableWriteBackBatchAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT batch_id
+            FROM operations
+            WHERE kind = 'metadata_writeback' AND status = 'completed' AND batch_id IS NOT NULL
+            GROUP BY batch_id
+            ORDER BY MAX(COALESCE(executed_at, created_at)) DESC
+            LIMIT 1;
+            """;
+
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        var batchId = await connection.ExecuteScalarAsync<string?>(
+            new CommandDefinition(sql, cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return batchId is null ? null : new BatchId(batchId);
+    }
+
     public async Task<IReadOnlyList<Operation>> GetBatchAsync(BatchId batchId, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT id               AS Id,
-                   batch_id         AS BatchId,
-                   kind             AS Kind,
-                   file_instance_id AS FileInstanceId,
-                   old_path         AS OldPath,
-                   new_path         AS NewPath,
-                   status           AS Status,
-                   created_at       AS CreatedAt,
-                   executed_at      AS ExecutedAt,
-                   undone_at        AS UndoneAt
+            SELECT id                AS Id,
+                   batch_id          AS BatchId,
+                   kind              AS Kind,
+                   file_instance_id  AS FileInstanceId,
+                   old_path          AS OldPath,
+                   new_path          AS NewPath,
+                   old_metadata_json AS OldMetadataJson,
+                   status            AS Status,
+                   created_at        AS CreatedAt,
+                   executed_at       AS ExecutedAt,
+                   undone_at         AS UndoneAt
             FROM operations
             WHERE batch_id = @BatchId
             ORDER BY created_at;
@@ -102,7 +140,8 @@ public sealed class SqliteOperationJournal : IOperationJournal
         OperationEnums.StatusFromDb(r.Status),
         ParseIso(r.CreatedAt)!.Value,
         ParseIso(r.ExecutedAt),
-        ParseIso(r.UndoneAt));
+        ParseIso(r.UndoneAt),
+        r.OldMetadataJson);
 
     private static string? ToIso(DateTime? value)
         => value?.ToString("O", CultureInfo.InvariantCulture);
@@ -117,6 +156,7 @@ public sealed class SqliteOperationJournal : IOperationJournal
         string? FileInstanceId,
         string? OldPath,
         string? NewPath,
+        string? OldMetadataJson,
         string Status,
         string CreatedAt,
         string? ExecutedAt,

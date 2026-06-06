@@ -24,6 +24,12 @@ public interface IFileInstanceRepository
     /// </summary>
     Task<IReadOnlyList<FileInstanceRecord>> GetActiveInstancesAsync(VolumeId volumeId, FilePath? underRoot, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Met à jour le chemin (et le nom canonique dérivé) d'une instance après un
+    /// déplacement/renommage d'uniformisation. En Inc 1-8, <paramref name="newPath"/> est absolu.
+    /// </summary>
+    Task UpdatePathAsync(FileInstanceId id, FilePath newPath, CancellationToken cancellationToken);
+
     /// <summary>Supprime toutes les FileInstances d'un volume (reset du catalogue).</summary>
     Task ClearVolumeAsync(VolumeId volumeId, CancellationToken cancellationToken);
 

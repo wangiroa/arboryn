@@ -19,4 +19,6 @@ public sealed record Operation(
     OperationStatus Status,
     DateTime CreatedAt,
     DateTime? ExecutedAt = null,
-    DateTime? UndoneAt = null);
+    DateTime? UndoneAt = null,
+    /// <summary>Métadonnées d'origine (JSON) pour annuler un write-back (<see cref="OperationKind.MetadataWriteback"/>).</summary>
+    string? OldMetadataJson = null);

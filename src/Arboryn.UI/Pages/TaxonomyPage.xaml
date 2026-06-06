@@ -3,21 +3,89 @@
     x:Class="Arboryn.UI.Pages.TaxonomyPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:ctrl="using:Arboryn.UI.Controls">
-    <ScrollViewer>
-        <StackPanel Padding="32,24,32,32" Spacing="24" MaxWidth="1200">
-            <StackPanel Spacing="4">
-                <TextBlock Text="Taxonomie" Style="{StaticResource ArborynTitleText}"
-                           Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                <TextBlock Text="Templates de chemin et de nom canoniques par catégorie."
-                           Style="{StaticResource ArborynBodyText}"
-                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-            </StackPanel>
-            <ctrl:EmptyStateView
-                Glyph="&#xE8EC;"
-                Title="L'éditeur de taxonomie n'est pas encore disponible"
-                Message="L'éditeur Scriban avec autocomplétion des variables, l'aperçu live sur LogicalFiles réels, le versioning des templates et la gestion des sous-catégories arrivent à l'incrément 6."
-                Milestone="Incrément 6 — Taxonomie canonique + uniformisation" />
+    xmlns:vm="using:Arboryn.UI.ViewModels">
+    <Grid Padding="32,24,32,16" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock Text="Taxonomie" Style="{StaticResource ArborynTitleText}"
+                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+            <TextBlock Text="Templates de chemin et de nom canoniques par catégorie (syntaxe Scriban)."
+                       Style="{StaticResource ArborynBodyText}"
+                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
         </StackPanel>
-    </ScrollViewer>
+
+        <TextBlock Grid.Row="1"
+                   Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                   Style="{StaticResource ArborynCaptionText}"
+                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
+
+        <ScrollViewer Grid.Row="2">
+            <ItemsControl ItemsSource="{x:Bind ViewModel.Categories, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:TaxonomyItem">
+                        <Border Style="{StaticResource ArborynCardBorder}" Margin="0,0,0,12" Padding="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{x:Bind CategoryLabel}"
+                                           Style="{StaticResource ArborynBodyStrongText}"
+                                           Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+
+                                <TextBlock Text="Template de chemin"
+                                           Style="{StaticResource ArborynCaptionText}"
+                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                <TextBox Text="{x:Bind PathTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         FontFamily="Consolas" AcceptsReturn="False" />
+
+                                <TextBlock Text="Template de nom"
+                                           Style="{StaticResource ArborynCaptionText}"
+                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                <TextBox Text="{x:Bind NameTemplate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         FontFamily="Consolas" AcceptsReturn="False" />
+
+                                <TextBlock Text="Champs requis (séparés par des virgules)"
+                                           Style="{StaticResource ArborynCaptionText}"
+                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                <TextBox Text="{x:Bind RequiredFieldsCsv, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         FontFamily="Consolas" AcceptsReturn="False" />
+
+                                <Border Background="{ThemeResource ArborynCardSecondaryBrush}"
+                                        CornerRadius="{StaticResource ArborynRadiusCard}" Padding="10,8">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="Aperçu (exemple)"
+                                                   Style="{StaticResource ArborynCaptionText}"
+                                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                        <TextBlock Text="{x:Bind PreviewText, Mode=OneWay}"
+                                                   FontFamily="Consolas"
+                                                   Foreground="{ThemeResource ArborynTextPrimaryBrush}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{x:Bind StatusText, Mode=OneWay}"
+                                               Style="{StaticResource ArborynCaptionText}"
+                                               Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                                               VerticalAlignment="Center" TextWrapping="Wrap" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Aperçu" Click="OnPreviewClick" Tag="{x:Bind}" />
+                                        <Button Content="Enregistrer" Click="OnSaveClick" Tag="{x:Bind}"
+                                                Style="{StaticResource AccentButtonStyle}" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
 </Page>

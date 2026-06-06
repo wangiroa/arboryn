@@ -11,6 +11,12 @@ public interface IOperationJournal
     /// <summary>Identifiant du dernier lot de suppressions exécutées non encore annulées.</summary>
     Task<BatchId?> GetLastUndoableDeleteBatchAsync(CancellationToken cancellationToken);
 
+    /// <summary>Identifiant du dernier lot d'uniformisation (rename/move) exécuté non encore annulé.</summary>
+    Task<BatchId?> GetLastUndoableUniformizationBatchAsync(CancellationToken cancellationToken);
+
+    /// <summary>Identifiant du dernier lot de write-back de métadonnées exécuté non encore annulé.</summary>
+    Task<BatchId?> GetLastUndoableWriteBackBatchAsync(CancellationToken cancellationToken);
+
     Task<IReadOnlyList<Operation>> GetBatchAsync(BatchId batchId, CancellationToken cancellationToken);
 
     Task MarkUndoneAsync(OperationId operationId, DateTime undoneAt, CancellationToken cancellationToken);

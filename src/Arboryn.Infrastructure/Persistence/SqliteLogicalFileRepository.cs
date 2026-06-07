@@ -88,6 +88,22 @@ public sealed class SqliteLogicalFileRepository : ILogicalFileRepository
             cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
+    public async Task<int> SetCategoryByInstanceAsync(
+        FileInstanceId instanceId, MediaCategory category, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE logical_files
+            SET category = @Category, updated_at = datetime('now')
+            WHERE id = (SELECT logical_file_id FROM file_instances WHERE id = @InstanceId);
+            """;
+
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        return await connection.ExecuteAsync(new CommandDefinition(
+            sql,
+            new { InstanceId = instanceId.Value, Category = LogicalFileEnums.ToDb(category) },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+    }
+
     public async Task BackfillUnattachedAsync(CancellationToken cancellationToken)
     {
         // 1) Crée les LogicalFiles manquants pour chaque signature « name_size »

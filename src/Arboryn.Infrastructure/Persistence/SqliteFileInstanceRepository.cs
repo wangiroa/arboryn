@@ -120,16 +120,18 @@ public sealed class SqliteFileInstanceRepository
         VolumeId volumeId, FilePath? underRoot, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT id             AS Id,
-                   volume_id      AS VolumeId,
-                   relative_path  AS RelativePath,
-                   canonical_name AS CanonicalName,
-                   size           AS Size,
-                   modified_at    AS ModifiedAt
-            FROM file_instances
-            WHERE volume_id = @VolumeId AND status = 'active'
-              AND (@Root IS NULL OR substr(lower(relative_path), 1, @RootLen) = @Root)
-            ORDER BY canonical_name;
+            SELECT fi.id             AS Id,
+                   fi.volume_id      AS VolumeId,
+                   fi.relative_path  AS RelativePath,
+                   fi.canonical_name AS CanonicalName,
+                   fi.size           AS Size,
+                   fi.modified_at    AS ModifiedAt,
+                   lf.category       AS Category
+            FROM file_instances fi
+            LEFT JOIN logical_files lf ON lf.id = fi.logical_file_id
+            WHERE fi.volume_id = @VolumeId AND fi.status = 'active'
+              AND (@Root IS NULL OR substr(lower(fi.relative_path), 1, @RootLen) = @Root)
+            ORDER BY fi.canonical_name;
             """;
 
         string? root = null;
@@ -141,7 +143,7 @@ public sealed class SqliteFileInstanceRepository
         }
 
         await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
-        var rows = await connection.QueryAsync<InstanceRow>(new CommandDefinition(
+        var rows = await connection.QueryAsync<ActiveInstanceRow>(new CommandDefinition(
             sql,
             new { VolumeId = volumeId.Value, Root = root, RootLen = rootLen },
             cancellationToken: cancellationToken)).ConfigureAwait(false);
@@ -367,6 +369,17 @@ public sealed class SqliteFileInstanceRepository
         r.Size,
         DateTime.Parse(r.ModifiedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
 
+    private static FileInstanceRecord Map(ActiveInstanceRow r) => new(
+        new FileInstanceId(r.Id),
+        new VolumeId(r.VolumeId),
+        FilePath.From(r.RelativePath),
+        new CanonicalName(r.CanonicalName),
+        r.Size,
+        DateTime.Parse(r.ModifiedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind))
+    {
+        Category = r.Category is null ? null : LogicalFileEnums.CategoryFromDb(r.Category),
+    };
+
     private static FileInstanceRecord Map(HashedRow r) => new(
         new FileInstanceId(r.Id),
         new VolumeId(r.VolumeId),
@@ -392,6 +405,16 @@ public sealed class SqliteFileInstanceRepository
         string CanonicalName,
         long Size,
         string ModifiedAt);
+
+    // Variante avec la catégorie affinée du LogicalFile joint (GetActiveInstancesAsync).
+    private sealed record ActiveInstanceRow(
+        string Id,
+        string VolumeId,
+        string RelativePath,
+        string CanonicalName,
+        long Size,
+        string ModifiedAt,
+        string? Category);
 
     private sealed record HashedRow(
         string Id,

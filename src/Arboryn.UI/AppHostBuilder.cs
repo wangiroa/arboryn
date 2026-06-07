@@ -54,6 +54,7 @@ internal static class AppHostBuilder
                 services.AddSingleton<InventoryViewModel>();
                 services.AddSingleton<NormalizeViewModel>();
                 services.AddSingleton<TaxonomyViewModel>();
+                services.AddSingleton<TriageViewModel>();
 
                 // Shell — instancié une fois, reçoit le ServiceProvider pour résoudre les pages enfants.
                 services.AddSingleton<MainWindow>(sp => new MainWindow(sp));

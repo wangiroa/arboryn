@@ -49,7 +49,11 @@ public sealed class PlanUniformizationHandler
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var category = MediaClassifier.FromExtension(instance.Path.Extension);
+            // Préfère la catégorie affinée du LogicalFile (ISBN→Book Inc 4, triage→OfficialDocument
+            // Inc 7) ; à défaut (non rattaché ou encore « unknown »), retombe sur l'extension.
+            var category = instance.Category is { } refined && refined != MediaCategory.Unknown
+                ? refined
+                : MediaClassifier.FromExtension(instance.Path.Extension);
             if (!taxonomyCache.TryGetValue(category, out var taxonomy))
             {
                 taxonomy = await _taxonomies.GetAsync(category, cancellationToken).ConfigureAwait(false);

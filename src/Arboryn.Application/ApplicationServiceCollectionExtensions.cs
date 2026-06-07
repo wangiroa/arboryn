@@ -29,6 +29,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddTransient<UndoUniformizationHandler>();
         services.AddTransient<WriteBackMetadataHandler>();
         services.AddTransient<UndoWriteBackMetadataHandler>();
+        services.AddTransient<PrepareTriageHandler>();
+        services.AddTransient<ApplyTriageHandler>();
+        services.AddTransient<LearnTriagePatternsHandler>();
         return services;
     }
 }

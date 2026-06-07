@@ -8,8 +8,9 @@
          on l'accepte car les templates sont rédigés par l'utilisateur lui-même (entrée
          de confiance) et le rendu se fait en mode restreint (LiquidTemplateContext sans
          I/O). Suppression limitée à ce projet, le seul à référencer Scriban.
-         À retirer dès qu'une version corrigée de Scriban est disponible. -->
-    <NoWarn>$(NoWarn);NU1902;NU1903;NU1904</NoWarn>
+         À retirer dès qu'une version corrigée de Scriban est disponible. Couvre aussi
+         les advisories de Magick.NET et Tesseract réintroduits à l'Inc 7 (même décision). -->
+    <NoWarn>$(NoWarn);NU1901;NU1902;NU1903;NU1904</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Arboryn.Domain\Arboryn.Domain.csproj" />
@@ -28,7 +29,12 @@
     <PackageReference Include="CoenM.ImageSharp.ImageHash" />
     <!-- Inc 6 : moteur de templates (chemins/noms canoniques), sandboxé. -->
     <PackageReference Include="Scriban" />
-    <!-- Magick.NET, Tesseract : réintroduits à l'Inc 7 à des versions vérifiées. -->
+    <!-- Inc 7 : rendu de miniatures (rasterisation PDF + images) et OCR des scans.
+         Magick.NET et Tesseract portent des advisories NuGet (couvertes par le NoWarn
+         ci-dessus, même classe que Scriban). Les adapters se dégradent proprement si le
+         runtime natif / tessdata est absent. À réviser dès qu'une version corrigée existe. -->
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" />
+    <PackageReference Include="Tesseract" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Database\Migrations\*.sql">

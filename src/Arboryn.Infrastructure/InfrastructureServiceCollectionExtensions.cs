@@ -59,6 +59,13 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Write-back de métadonnées dans le fichier (Inc 6) — par catégorie.
         services.AddSingleton<IContentMetadataWriter, TagLibAudioMetadataWriter>();
+
+        // Triage de documents (Inc 7) — extraction texte (PdfPig), miniatures (Magick.NET),
+        // OCR (Tesseract, dégradé si absent), et persistance patterns/corrections.
+        services.AddSingleton<IDocumentTextExtractor, PdfTextExtractor>();
+        services.AddSingleton<IDocumentThumbnailRenderer, MagickThumbnailRenderer>();
+        services.AddSingleton<IOcrEngine, TesseractOcrEngine>();
+        services.AddSingleton<ITriageRepository, SqliteTriageRepository>();
         return services;
     }
 }

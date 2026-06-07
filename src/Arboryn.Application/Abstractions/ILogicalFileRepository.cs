@@ -19,6 +19,13 @@ public interface ILogicalFileRepository
     Task UpdateCategoryAsync(LogicalFileId id, MediaCategory category, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Met à jour la catégorie du LogicalFile rattaché à une FileInstance (affinement par triage).
+    /// Sans effet si l'instance n'est rattachée à aucun LogicalFile. Renvoie le nombre de
+    /// LogicalFiles modifiés (0 ou 1).
+    /// </summary>
+    Task<int> SetCategoryByInstanceAsync(FileInstanceId instanceId, MediaCategory category, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Rattache toutes les FileInstances orphelines (<c>logical_file_id IS NULL</c>) :
     /// pour chaque signature <c>name_size</c> manquante, crée le LogicalFile correspondant
     /// puis met à jour les instances. Idempotent — sans effet si tout est déjà rattaché.

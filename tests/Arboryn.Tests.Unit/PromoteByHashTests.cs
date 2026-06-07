@@ -94,6 +94,9 @@ public class PromoteByHashTests
         public Task UpdateCategoryAsync(LogicalFileId id, Arboryn.Domain.Enums.MediaCategory category, CancellationToken cancellationToken)
             => Task.CompletedTask;
 
+        public Task<int> SetCategoryByInstanceAsync(FileInstanceId instanceId, Arboryn.Domain.Enums.MediaCategory category, CancellationToken cancellationToken)
+            => Task.FromResult(0);
+
         public Task BackfillUnattachedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
         public Task DeleteOrphansAsync(CancellationToken cancellationToken)

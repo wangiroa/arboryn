@@ -1,3 +1,4 @@
+using Arboryn.Domain.Enums;
 using Arboryn.Domain.ValueObjects;
 
 namespace Arboryn.Application.Abstractions;
@@ -55,4 +56,11 @@ public sealed record FileInstanceRecord(
 {
     /// <summary>Optionnel : LogicalFile auquel rattacher cette instance (nullable Inc 3).</summary>
     public LogicalFileId? LogicalFileId { get; init; }
+
+    /// <summary>
+    /// Catégorie affinée du LogicalFile rattaché (Inc 4 : ISBN→Book ; Inc 7 : triage→OfficialDocument),
+    /// renseignée par les requêtes qui joignent <c>logical_files</c>. <c>null</c> si non rattaché ou
+    /// non chargée ; <see cref="MediaCategory.Unknown"/> si le LogicalFile n'a pas encore été affiné.
+    /// </summary>
+    public MediaCategory? Category { get; init; }
 }

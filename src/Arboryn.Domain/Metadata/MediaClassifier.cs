@@ -19,6 +19,13 @@ public static class MediaClassifier
         ".epub", ".mobi", ".azw", ".azw3", ".kfx", ".fb2",
     };
 
+    // Comics et BD : archives d'images paginées. Une même série est souvent découpée en
+    // plusieurs fichiers (un par tome/numéro) → traitée comme œuvre multi-fichiers.
+    private static readonly HashSet<string> ComicExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".cbz", ".cbr", ".cb7", ".cbt", ".cba",
+    };
+
     private static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".mkv", ".mp4", ".avi", ".mov", ".wmv", ".webm", ".flv", ".m4v", ".mpg", ".mpeg", ".ts",
@@ -63,6 +70,11 @@ public static class MediaClassifier
         if (BookExtensions.Contains(normalized))
         {
             return MediaCategory.Book;
+        }
+
+        if (ComicExtensions.Contains(normalized))
+        {
+            return MediaCategory.Comic;
         }
 
         if (OtherDocumentExtensions.Contains(normalized))

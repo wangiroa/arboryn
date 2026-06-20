@@ -5,6 +5,7 @@ public enum MediaCategory
     Unknown,
     Audiobook,
     Book,
+    Comic,
     Video,
     Photo,
     OfficialDocument,

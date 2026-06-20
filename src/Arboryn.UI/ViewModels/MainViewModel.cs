@@ -37,6 +37,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly ClearCatalogHandler _clearHandler;
     private readonly DeleteFilesHandler _deleteHandler;
     private readonly UndoLastBatchHandler _undoHandler;
+    private readonly EnrichDirectoryHandler _enrichHandler;
     private readonly ISettingsRepository _settings;
     private readonly ILogger<MainViewModel> _logger;
 
@@ -74,6 +75,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ClearCatalogHandler clearHandler,
         DeleteFilesHandler deleteHandler,
         UndoLastBatchHandler undoHandler,
+        EnrichDirectoryHandler enrichHandler,
         ISettingsRepository settings,
         ILogger<MainViewModel> logger)
     {
@@ -87,6 +89,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _clearHandler = clearHandler;
         _deleteHandler = deleteHandler;
         _undoHandler = undoHandler;
+        _enrichHandler = enrichHandler;
         _settings = settings;
         _logger = logger;
         _selectedMediaFilter = MediaFilters[0];
@@ -715,6 +718,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             await Task.Run(() => _scanHandler.ExecuteAsync(root, VolumeId.Default, progress, token), token);
 
+            // Enrichissement automatique post-scan, si activé (le handler respecte lui-même le
+            // mode en ligne global/par-catégorie et le cache ; rien ne sort en mode local-only).
+            await MaybeEnrichAfterScanAsync(root, token);
+
             await DetectSelectedAsync(cancellationToken: token);
 
             _pendingScanned = true;
@@ -734,6 +741,38 @@ public sealed class MainViewModel : INotifyPropertyChanged
             _cts.Dispose();
             _cts = null;
             IsScanning = false;
+        }
+    }
+
+    /// <summary>
+    /// Lance l'enrichissement en ligne du dossier scanné si le réglage <c>enrich_during_scan</c>
+    /// est actif. Best-effort : un échec d'enrichissement ne fait pas échouer le scan.
+    /// </summary>
+    private async Task MaybeEnrichAfterScanAsync(FilePath root, CancellationToken cancellationToken)
+    {
+        var raw = await _settings.GetAsync("enrich_during_scan", cancellationToken);
+        if (!string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        try
+        {
+            StatusText = "Enrichissement en ligne…";
+            var progress = new Progress<int>(n => StatusText = $"Enrichissement : {n} fichier(s)…");
+            var result = await Task.Run(
+                () => _enrichHandler.ExecuteAsync(VolumeId.Default, root, progress, cancellationToken), cancellationToken);
+            _logger.LogInformation(
+                "Enrichissement post-scan : {Applied} champ(s) appliqué(s) sur {Enriched} fichier(s).",
+                result.AppliedFields, result.EnrichedFiles);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Enrichissement post-scan ignoré (erreur non bloquante).");
         }
     }
 

@@ -21,6 +21,10 @@ public sealed class SqliteTaxonomyRepository : ITaxonomyRepository
         => _databaseFactory = databaseFactory;
 
     public async Task<CategoryTaxonomy?> GetAsync(MediaCategory category, CancellationToken cancellationToken)
+        => await GetStoredAsync(category, cancellationToken).ConfigureAwait(false)
+           ?? DefaultTaxonomies.For(category);
+
+    public async Task<CategoryTaxonomy?> GetStoredAsync(MediaCategory category, CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT name_pattern AS NamePattern, path_pattern AS PathPattern,
@@ -35,7 +39,15 @@ public sealed class SqliteTaxonomyRepository : ITaxonomyRepository
         var row = await connection.QuerySingleOrDefaultAsync<TaxonomyRow>(new CommandDefinition(
             sql, new { Category = LogicalFileEnums.ToDb(category) }, cancellationToken: cancellationToken)).ConfigureAwait(false);
 
-        return row is null ? DefaultTaxonomies.For(category) : Map(category, row);
+        return row is null ? null : Map(category, row);
+    }
+
+    public async Task DeleteAsync(MediaCategory category, CancellationToken cancellationToken)
+    {
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM library_taxonomy WHERE category = @Category;",
+            new { Category = LogicalFileEnums.ToDb(category) }, cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<CategoryTaxonomy>> GetAllAsync(CancellationToken cancellationToken)

@@ -42,6 +42,7 @@ public static class MetadataKeys
 {
     public const string Title = "title";
     public const string Subtitle = "subtitle";
+    public const string Chapter = "chapter";
     public const string Artist = "artist";
     public const string Album = "album";
     public const string AlbumArtist = "album_artist";
@@ -79,4 +80,7 @@ public static class MetadataSources
     public const string EpubOpf = "epub_opf";
     public const string User = "user";
     public const string Triage = "triage";
+
+    /// <summary>Source d'une métadonnée enrichie en ligne (Inc 8), p.ex. <c>online_openlibrary</c>.</summary>
+    public static string Online(string provider) => $"online_{provider}";
 }

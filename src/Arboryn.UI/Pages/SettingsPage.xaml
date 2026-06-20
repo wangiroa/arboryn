@@ -248,20 +248,136 @@
                 </StackPanel>
             </Border>
 
-            <!-- Section : Privacy & enrichment (stub) -->
+            <!-- Section : Enrichissement en ligne (Inc 8) -->
             <Border Style="{StaticResource ArborynCardBorder}">
-                <StackPanel Spacing="12">
+                <StackPanel Spacing="16">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
                                   Glyph="&#xE774;" FontSize="18" />
-                        <TextBlock Text="Enrichissement (à venir — Inc 8)"
+                        <TextBlock Text="Enrichissement en ligne"
                                    Style="{StaticResource ArborynBodyStrongText}"
                                    Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
                     </StackPanel>
-                    <TextBlock Text="Configuration des providers (OpenLibrary, TMDB, MusicBrainz), seuil de confidence pour l'auto-application, et mode 100 % local désactivable globalement et par catégorie."
-                               Style="{StaticResource ArborynBodyText}"
-                               Foreground="{ThemeResource ArborynTextSecondaryBrush}"
-                               TextWrapping="Wrap" />
+
+                    <Border Background="{ThemeResource ArborynCautionBgBrush}"
+                            CornerRadius="{StaticResource ArborynRadiusCard}" Padding="12,8">
+                        <TextBlock Text="Privacy-first : seuls des champs structurés (titre, auteur, ISBN, année) sont envoyés aux providers. Jamais le nom de fichier ni le chemin. En mode local (par défaut), aucune requête réseau."
+                                   Style="{StaticResource ArborynCaptionText}"
+                                   Foreground="{ThemeResource ArborynCautionBrush}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+
+                    <!-- Global toggle -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Activer l'enrichissement en ligne"
+                                       Style="{StaticResource ArborynBodyStrongText}"
+                                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                            <TextBlock Text="Interrupteur maître. Désactivé = 100 % local, aucune sortie réseau."
+                                       Style="{StaticResource ArborynCaptionText}"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" MinWidth="0" VerticalAlignment="Center"
+                                      IsOn="{x:Bind Enrichment.OnlineModeEnabled, Mode=TwoWay}" />
+                    </Grid>
+
+                    <Border Background="{ThemeResource ArborynStrokeDividerBrush}" Height="1" />
+
+                    <!-- Per-category toggles -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Catégories enrichies"
+                                   Style="{StaticResource ArborynBodyStrongText}"
+                                   Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                        <StackPanel Orientation="Horizontal" Spacing="20">
+                            <CheckBox Content="Livres" IsChecked="{x:Bind Enrichment.EnrichBooks, Mode=TwoWay}" />
+                            <CheckBox Content="Livres audio" IsChecked="{x:Bind Enrichment.EnrichAudiobooks, Mode=TwoWay}" />
+                            <CheckBox Content="Vidéos" IsChecked="{x:Bind Enrichment.EnrichVideos, Mode=TwoWay}" />
+                            <CheckBox Content="BD" IsChecked="{x:Bind Enrichment.EnrichComics, Mode=TwoWay}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Confidence threshold -->
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Seuil d'auto-application de la confiance"
+                                   Style="{StaticResource ArborynBodyStrongText}"
+                                   Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                        <TextBlock Text="Au-dessus du seuil, les champs trouvés sont appliqués automatiquement ; en dessous, ils sont proposés."
+                                   Style="{StaticResource ArborynCaptionText}"
+                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
+                        <Slider Minimum="0" Maximum="1" StepFrequency="0.05" Width="300"
+                                HorizontalAlignment="Left"
+                                Value="{x:Bind Enrichment.ConfidenceThreshold, Mode=TwoWay}" />
+                    </StackPanel>
+
+                    <!-- Enrich during scan -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="Enrichir automatiquement pendant le scan"
+                                       Style="{StaticResource ArborynBodyStrongText}"
+                                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                            <TextBlock Text="À la fin d'un scan, les fichiers indexés sont enrichis (si le mode en ligne est actif)."
+                                       Style="{StaticResource ArborynCaptionText}"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" MinWidth="0" VerticalAlignment="Center"
+                                      IsOn="{x:Bind Enrichment.EnrichDuringScan, Mode=TwoWay}" />
+                    </Grid>
+
+                    <Border Background="{ThemeResource ArborynStrokeDividerBrush}" Height="1" />
+
+                    <!-- API keys -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Clés d'API"
+                                   Style="{StaticResource ArborynBodyStrongText}"
+                                   Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                        <TextBlock Text="TMDB requiert une clé (vidéos). Google Books fonctionne sans clé (quota anonyme) ; une clé augmente le quota. OpenLibrary et MusicBrainz ne requièrent pas de clé."
+                                   Style="{StaticResource ArborynCaptionText}"
+                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
+                        <Grid ColumnSpacing="12" RowSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="TMDB" VerticalAlignment="Center"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                            <PasswordBox Grid.Row="0" Grid.Column="1"
+                                         Password="{x:Bind Enrichment.TmdbApiKey, Mode=TwoWay}" />
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Google Books" VerticalAlignment="Center"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                            <PasswordBox Grid.Row="1" Grid.Column="1"
+                                         Password="{x:Bind Enrichment.GoogleBooksApiKey, Mode=TwoWay}" />
+                        </Grid>
+                    </StackPanel>
+
+                    <Border Background="{ThemeResource ArborynStrokeDividerBrush}" Height="1" />
+
+                    <!-- Actions -->
+                    <StackPanel Spacing="10">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Enregistrer les réglages" Click="OnSaveEnrichmentClick"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    IsEnabled="{x:Bind Enrichment.CanRun, Mode=OneWay}" />
+                            <Button Content="Enrichir le catalogue" Click="OnEnrichCatalogClick"
+                                    IsEnabled="{x:Bind Enrichment.CanRun, Mode=OneWay}" />
+                            <Button Content="Enrichir un dossier…" Click="OnEnrichFolderClick"
+                                    IsEnabled="{x:Bind Enrichment.CanRun, Mode=OneWay}" />
+                        </StackPanel>
+                        <TextBlock Text="{x:Bind Enrichment.StatusText, Mode=OneWay}"
+                                   Style="{StaticResource ArborynCaptionText}"
+                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

@@ -20,6 +20,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Dapper" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
+    <!-- Inc 8 : IHttpClientFactory pour les providers d'enrichissement en ligne. -->
+    <PackageReference Include="Microsoft.Extensions.Http" />
     <!-- Inc 4 : lecteurs de métadonnées de contenu. -->
     <PackageReference Include="TagLibSharp" />
     <PackageReference Include="PdfPig" />
@@ -38,6 +40,14 @@
   </ItemGroup>
   <ItemGroup>
     <None Update="Database\Migrations\*.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- Inc 7 : données de langue Tesseract (tessdata_fast, LSTM — compatibles Tesseract 5).
+         Copiées à côté de l'exécutable pour que l'OCR du triage fonctionne dès le build, sans
+         manipulation. TesseractOcrEngine les résout via le dossier « tessdata » voisin (ou la
+         variable d'environnement ARBORYN_TESSDATA). Retirer « eng » pour alléger si seul le
+         français est utile. -->
+    <None Update="tessdata\*.traineddata">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

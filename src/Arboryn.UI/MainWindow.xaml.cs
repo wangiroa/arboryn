@@ -34,6 +34,7 @@ public sealed partial class MainWindow : Window
             ["duplicates"] = typeof(Pages.DuplicatesPage),
             ["normalize"] = typeof(Pages.NormalizePage),
             ["triage"] = typeof(Pages.TriagePage),
+            ["review"] = typeof(Pages.EnrichmentReviewPage),
             ["placement"] = typeof(Pages.PlacementPage),
             ["taxonomy"] = typeof(Pages.TaxonomyPage),
             ["history"] = typeof(Pages.HistoryPage),

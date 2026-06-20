@@ -38,9 +38,37 @@ public interface ILogicalFileRepository
     /// <summary>Métriques globales du catalogue pour un volume.</summary>
     Task<CatalogMetrics> GetMetricsAsync(VolumeId volumeId, CancellationToken cancellationToken);
 
-    /// <summary>Résumés par LogicalFile pour la vue inventaire, triés par espace récupérable.</summary>
-    Task<IReadOnlyList<LogicalFileSummary>> GetSummariesAsync(VolumeId volumeId, CancellationToken cancellationToken);
+    /// <summary>
+    /// Résumés par LogicalFile pour la vue inventaire, triés par espace récupérable.
+    /// Le <paramref name="filter"/> restreint l'ensemble (catégorie, volume, répertoire,
+    /// texte sur nom/chemin/métadonnées). Un filtre vide renvoie tout le catalogue.
+    /// </summary>
+    Task<IReadOnlyList<LogicalFileSummary>> GetSummariesAsync(CatalogFilter filter, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Valeurs distinctes disponibles pour alimenter les contrôles de filtrage
+    /// (catégories présentes, volumes présents, répertoires présents).
+    /// </summary>
+    Task<CatalogFilterOptions> GetFilterOptionsAsync(CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// Critères de filtrage de la vue catalogue. Chaque champ nul est ignoré ;
+/// les champs renseignés se combinent en ET logique.
+/// </summary>
+public sealed record CatalogFilter(
+    MediaCategory? Category = null,
+    string? VolumeId = null,
+    string? Directory = null,
+    string? Search = null);
+
+/// <summary>Options disponibles pour peupler les contrôles de filtrage.</summary>
+public sealed record CatalogFilterOptions(
+    IReadOnlyList<MediaCategory> Categories,
+    IReadOnlyList<VolumeOption> Volumes);
+
+/// <summary>Un volume sélectionnable dans le filtre (identifiant + nom affiché).</summary>
+public sealed record VolumeOption(string Id, string Name);
 
 /// <summary>Statistiques du catalogue (par volume).</summary>
 public sealed record CatalogMetrics(long LogicalFiles, long FileInstances)
@@ -56,7 +84,10 @@ public sealed record LogicalFileSummary(
     int InstanceCount,
     long TotalSize,
     long MaxSize,
-    FileInstanceId SampleInstanceId)
+    FileInstanceId SampleInstanceId,
+    MediaCategory Category,
+    string Directory,
+    string VolumeName)
 {
     /// <summary>Espace récupérable si l'on ne garde qu'une copie : total − plus grande.</summary>
     public long ReclaimableBytes => TotalSize - MaxSize;

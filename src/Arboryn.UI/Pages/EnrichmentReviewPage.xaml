@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Arboryn.UI.Pages.EnrichmentReviewPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:vm="using:Arboryn.UI.ViewModels">
+
+    <Grid Padding="32,24,32,16" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Head -->
+        <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock Text="Révision en ligne" Style="{StaticResource ArborynTitleText}"
+                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+            <TextBlock Text="Champs proposés par les providers en ligne sous le seuil d'auto-application. Acceptez pour écrire dans les métadonnées, ou rejetez."
+                       Style="{StaticResource ArborynBodyText}"
+                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!-- Actions -->
+        <StackPanel Grid.Row="1" Spacing="8">
+            <muxc:ProgressBar IsIndeterminate="True"
+                              Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Actualiser" Click="OnRefreshClick"
+                        IsEnabled="{x:Bind ViewModel.CanAct, Mode=OneWay}" />
+                <Button Content="Tout accepter" Click="OnAcceptAllClick"
+                        Style="{StaticResource AccentButtonStyle}"
+                        IsEnabled="{x:Bind ViewModel.CanAct, Mode=OneWay}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Status -->
+        <TextBlock Grid.Row="2"
+                   Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                   Style="{StaticResource ArborynBodyText}"
+                   Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                   TextWrapping="Wrap" />
+
+        <!-- Empty state -->
+        <Border Grid.Row="3" Style="{StaticResource ArborynCardBorder}"
+                Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay}">
+            <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="24">
+                <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                          Glyph="&#xE73E;" FontSize="32"
+                          Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                <TextBlock Text="Aucun champ à réviser."
+                           Style="{StaticResource ArborynBodyStrongText}"
+                           HorizontalAlignment="Center"
+                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                <TextBlock Text="Les propositions sous le seuil apparaîtront ici après un enrichissement en ligne."
+                           Style="{StaticResource ArborynCaptionText}"
+                           HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="380"
+                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+            </StackPanel>
+        </Border>
+
+        <!-- Candidate grid -->
+        <Border Grid.Row="3" Style="{StaticResource ArborynCardBorder}" Padding="0"
+                Visibility="{x:Bind ViewModel.HasCandidates, Mode=OneWay}">
+            <ListView ItemsSource="{x:Bind ViewModel.Rows, Mode=OneWay}"
+                      SelectionMode="None" Background="Transparent">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Padding" Value="14,12" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:EnrichmentCandidateRowItem">
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Field + value + file -->
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{x:Bind FieldLabel}"
+                                               Style="{StaticResource ArborynBodyStrongText}"
+                                               Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                                    <Border Background="{ThemeResource ArborynAccentSelectedBgBrush}"
+                                            CornerRadius="{StaticResource ArborynRadiusPill}"
+                                            Padding="8,2" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind ConfidenceText}"
+                                                   Style="{StaticResource ArborynCaptionText}"
+                                                   Foreground="{ThemeResource ArborynAccentTextBrush}" />
+                                    </Border>
+                                    <TextBlock Text="{x:Bind ProviderText}"
+                                               Style="{StaticResource ArborynCaptionText}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                </StackPanel>
+                                <TextBlock Text="{x:Bind Value}"
+                                           Style="{StaticResource ArborynBodyText}"
+                                           Foreground="{ThemeResource ArborynTextPrimaryBrush}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Text="{x:Bind FileName}"
+                                           Style="{StaticResource ArborynCaptionText}"
+                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTipService.ToolTip="{x:Bind Path}" />
+                            </StackPanel>
+
+                            <!-- Accept -->
+                            <Button Grid.Column="1" Click="OnAcceptClick" VerticalAlignment="Center"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    ToolTipService.ToolTip="Écrire dans les métadonnées">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                              Glyph="&#xE73E;" FontSize="12" />
+                                    <TextBlock Text="Accepter" />
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Reject -->
+                            <Button Grid.Column="2" Click="OnRejectClick" VerticalAlignment="Center"
+                                    ToolTipService.ToolTip="Ignorer ce champ">
+                                <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                          Glyph="&#xE711;" FontSize="12" />
+                            </Button>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Border>
+    </Grid>
+</Page>

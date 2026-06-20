@@ -30,14 +30,24 @@ public sealed class ExecuteUniformizationHandler
         _logger = logger;
     }
 
-    public async Task<UniformizationResult> ExecuteAsync(
+    /// <summary>Exécute toutes les opérations d'un plan.</summary>
+    public Task<UniformizationResult> ExecuteAsync(
         UniformizationPlan plan, CancellationToken cancellationToken = default)
+        => ExecuteAsync(plan.Operations, cancellationToken);
+
+    /// <summary>
+    /// Exécute un sous-ensemble d'opérations choisi par l'utilisateur (sélection individuelle ou
+    /// globale dans l'aperçu). Les opérations non transmises sont simplement ignorées ; celles
+    /// fournies partagent un même <see cref="BatchId"/> et restent annulables ensemble.
+    /// </summary>
+    public async Task<UniformizationResult> ExecuteAsync(
+        IReadOnlyList<PlannedOperation> operations, CancellationToken cancellationToken = default)
     {
         var batchId = BatchId.New();
         var moved = 0;
         var failed = 0;
 
-        foreach (var operation in plan.Operations)
+        foreach (var operation in operations)
         {
             cancellationToken.ThrowIfCancellationRequested();
 

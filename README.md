@@ -17,11 +17,32 @@ Incrément 0 — squelette de solution prêt à builder. Voir [`CLAUDE.md`](./CL
 
 ```powershell
 dotnet restore
-dotnet build
-dotnet test
+dotnet build              # compile tous les projets + tests
+dotnet test               # exécute les tests unitaires et d'intégration
 ```
 
-L'exécution de l'app via `dotnet run --project src/Arboryn.UI/Arboryn.UI.csproj` nécessite Windows. Le squelette compile depuis Linux ou macOS pour les projets non-UI (Domain, Application, Infrastructure, tests).
+> ⚠️ `dotnet build` (sans RID) produit un exe UI **framework-dependent qui ne se lance pas**
+> (l'app WinUI est auto-contenue, `WindowsAppSDKSelfContained=true`). Il sert à compiler et
+> tester, pas à lancer l'application. Pour obtenir un exe lançable, voir « Lancer l'application ».
+
+Les projets non-UI (Domain, Application, Infrastructure, tests) compilent aussi depuis Linux/macOS.
+
+## Lancer l'application
+
+L'app WinUI 3 est auto-contenue : il faut builder **avec un RID explicite et une plateforme**
+(le mode self-contained refuse `AnyCPU`), puis lancer l'exe produit.
+
+```powershell
+# Build de l'exe lançable (Windows uniquement)
+dotnet build src/Arboryn.UI/Arboryn.UI.csproj -c Debug -r win-x64 /p:Platform=x64
+
+# Lancement
+& .\src\Arboryn.UI\bin\x64\Debug\net8.0-windows10.0.19041.0\win-x64\Arboryn.UI.exe
+```
+
+> Après chaque modification du code, **rebuildez avec la commande RID ci-dessus** avant de
+> relancer : un simple `dotnet build` ne met pas à jour l'exe lancé, et l'application
+> continuerait de tourner sur d'anciens binaires.
 
 ## Structure
 

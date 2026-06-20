@@ -5,6 +5,7 @@ using Arboryn.Domain.Taxonomy;
 using Arboryn.Infrastructure.Persistence;
 using Arboryn.Infrastructure.Templates;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Arboryn.Tests.Integration;
@@ -119,5 +120,67 @@ public class TaxonomyTests
         var version2 = await repository.SaveAsync(custom with { NameTemplate = "{{ author }} - {{ title }}.{{ ext }}" }, CancellationToken.None);
         version2.Should().Be(2);
         (await repository.GetAsync(MediaCategory.Book, CancellationToken.None))!.Version.Should().Be(2);
+    }
+
+    // L'ancien template livré pour les livres audio, avant la branche {{ if chapter }}.
+    private static readonly CategoryTaxonomy LegacyAudiobookDefault = new(
+        MediaCategory.Audiobook,
+        PathTemplate: "Livres audio/{{ author }}{{ if series }}/{{ series }}{{ end }}",
+        NameTemplate: "{{ author }} - {{ if series }}{{ series }} - {{ volume | format \"00\" }} - {{ end }}{{ title }}.{{ ext }}",
+        RequiredFields: new[] { "author", "title" });
+
+    [Fact]
+    public async Task Upgrade_RemovesStoredOldDefault_SoCurrentDefaultApplies()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        var repository = new SqliteTaxonomyRepository(db.Factory);
+
+        // Simule une base ayant enregistré l'ancien défaut (cas réel rencontré).
+        await repository.SaveAsync(LegacyAudiobookDefault, CancellationToken.None);
+
+        var upgrader = new UpgradeDefaultTaxonomiesHandler(
+            repository, NullLogger<UpgradeDefaultTaxonomiesHandler>.Instance);
+        var upgraded = await upgrader.ExecuteAsync(CancellationToken.None);
+
+        upgraded.Should().Be(1);
+        // Plus de ligne stockée → l'app sert le défaut courant (avec la branche {{ if chapter }}).
+        (await repository.GetStoredAsync(MediaCategory.Audiobook, CancellationToken.None)).Should().BeNull();
+        var effective = await repository.GetAsync(MediaCategory.Audiobook, CancellationToken.None);
+        effective!.NameTemplate.Should().Be(DefaultTaxonomies.For(MediaCategory.Audiobook)!.NameTemplate);
+        effective.NameTemplate.Should().Contain("if chapter");
+    }
+
+    [Fact]
+    public async Task Upgrade_PreservesUserCustomization()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        var repository = new SqliteTaxonomyRepository(db.Factory);
+
+        var custom = new CategoryTaxonomy(
+            MediaCategory.Audiobook,
+            PathTemplate: "Mes audios/{{ author }}",
+            NameTemplate: "{{ title }}.{{ ext }}",
+            RequiredFields: new[] { "title" });
+        await repository.SaveAsync(custom, CancellationToken.None);
+
+        var upgrader = new UpgradeDefaultTaxonomiesHandler(
+            repository, NullLogger<UpgradeDefaultTaxonomiesHandler>.Instance);
+        var upgraded = await upgrader.ExecuteAsync(CancellationToken.None);
+
+        upgraded.Should().Be(0);
+        var stored = await repository.GetStoredAsync(MediaCategory.Audiobook, CancellationToken.None);
+        stored!.PathTemplate.Should().Be("Mes audios/{{ author }}");
+    }
+
+    [Fact]
+    public async Task Upgrade_NoStoredRows_IsNoOp()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        var repository = new SqliteTaxonomyRepository(db.Factory);
+
+        var upgrader = new UpgradeDefaultTaxonomiesHandler(
+            repository, NullLogger<UpgradeDefaultTaxonomiesHandler>.Instance);
+
+        (await upgrader.ExecuteAsync(CancellationToken.None)).Should().Be(0);
     }
 }

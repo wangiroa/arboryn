@@ -47,6 +47,14 @@ public sealed partial class NormalizePage : Page
 
     private async void OnPlanClick(object sender, RoutedEventArgs e) => await ViewModel.PlanAsync();
 
+    private void OnSelectAllClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox checkBox)
+        {
+            ViewModel.SetAllSelected(checkBox.IsChecked == true);
+        }
+    }
+
     private async void OnExecuteClick(object sender, RoutedEventArgs e)
     {
         var dialog = new ContentDialog

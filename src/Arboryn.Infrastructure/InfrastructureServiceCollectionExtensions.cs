@@ -59,6 +59,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Write-back de métadonnées dans le fichier (Inc 6) — par catégorie.
         services.AddSingleton<IContentMetadataWriter, TagLibAudioMetadataWriter>();
+        // Note : l'enregistrement des providers d'enrichissement (Inc 8) est plus bas.
 
         // Triage de documents (Inc 7) — extraction texte (PdfPig), miniatures (Magick.NET),
         // OCR (Tesseract, dégradé si absent), et persistance patterns/corrections.
@@ -66,6 +67,31 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IDocumentThumbnailRenderer, MagickThumbnailRenderer>();
         services.AddSingleton<IOcrEngine, TesseractOcrEngine>();
         services.AddSingleton<ITriageRepository, SqliteTriageRepository>();
+
+        // Enrichissement online (Inc 8) — cache, trousseau de clés, et providers (HttpClient typés).
+        services.AddSingleton<IApiCache, SqliteApiCache>();
+        services.AddSingleton<IEnrichmentCandidateRepository, SqliteEnrichmentCandidateRepository>();
+        services.AddSingleton<IEnrichmentKeyring, Enrichment.SettingsEnrichmentKeyring>();
+        AddProvider<Enrichment.OpenLibraryProvider>(services);
+        AddProvider<Enrichment.GoogleBooksProvider>(services);
+        AddProvider<Enrichment.TmdbProvider>(services);
+        AddProvider<Enrichment.MusicBrainzProvider>(services);
         return services;
+    }
+
+    /// <summary>
+    /// Enregistre un provider d'enrichissement avec son HttpClient typé (timeout + User-Agent
+    /// — requis par MusicBrainz et courtois pour les autres) et l'expose comme
+    /// <see cref="IMetadataProvider"/> pour l'orchestrateur.
+    /// </summary>
+    private static void AddProvider<TProvider>(IServiceCollection services)
+        where TProvider : class, IMetadataProvider
+    {
+        services.AddHttpClient<TProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Arboryn/1.0 (+https://github.com/arboryn)");
+        });
+        services.AddTransient<IMetadataProvider>(sp => sp.GetRequiredService<TProvider>());
     }
 }

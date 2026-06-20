@@ -8,6 +8,7 @@
     <Grid Padding="32,24,32,32" RowSpacing="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -20,17 +21,112 @@
                        Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
         </StackPanel>
 
+        <!-- Filter bar -->
+        <Border Grid.Row="1" Style="{StaticResource ArborynCardBorder}" Padding="16,12">
+            <Grid RowSpacing="10" ColumnSpacing="12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <ComboBox Grid.Row="0" Grid.Column="0" Header="Catégorie"
+                          HorizontalAlignment="Stretch"
+                          ItemsSource="{x:Bind ViewModel.Categories, Mode=OneWay}"
+                          SelectedItem="{x:Bind ViewModel.SelectedCategory, Mode=TwoWay}"
+                          DisplayMemberPath="Label" />
+
+                <ComboBox Grid.Row="0" Grid.Column="1" Header="Volume"
+                          HorizontalAlignment="Stretch"
+                          ItemsSource="{x:Bind ViewModel.Volumes, Mode=OneWay}"
+                          SelectedItem="{x:Bind ViewModel.SelectedVolume, Mode=TwoWay}"
+                          DisplayMemberPath="Label" />
+
+                <StackPanel Grid.Row="0" Grid.Column="2" Spacing="2">
+                    <TextBlock Text="Répertoire" Style="{StaticResource ArborynCaptionText}"
+                               Foreground="{ThemeResource ArborynTextSecondaryBrush}" Margin="1,0,0,2" />
+                    <Grid ColumnSpacing="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Height="32"
+                                Background="{ThemeResource ArborynControlDefaultBrush}"
+                                BorderBrush="{ThemeResource ArborynStrokeControlBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource ArborynRadiusControl}"
+                                Padding="10,0">
+                            <TextBlock Text="{x:Bind ViewModel.DirectoryFilterDisplay, Mode=OneWay}"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTipService.ToolTip="{x:Bind ViewModel.DirectoryFilterDisplay, Mode=OneWay}"
+                                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                        </Border>
+                        <Button Grid.Column="1" Content="Parcourir…"
+                                Style="{StaticResource ArborynSubtleButton}"
+                                Click="OnPickDirectory" />
+                        <Button Grid.Column="2" Content="✕"
+                                Style="{StaticResource ArborynSubtleButton}"
+                                ToolTipService.ToolTip="Effacer le filtre répertoire"
+                                Visibility="{x:Bind ViewModel.DirectoryClearVisibility, Mode=OneWay}"
+                                Click="OnClearDirectory" />
+                    </Grid>
+                </StackPanel>
+
+                <Button Grid.Row="0" Grid.Column="3" Content="Réinitialiser"
+                        VerticalAlignment="Bottom"
+                        Style="{StaticResource ArborynSubtleButton}"
+                        Click="OnResetFilters" />
+
+                <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+                         Header="Recherche (nom, chemin, métadonnées)"
+                         PlaceholderText="Tape pour filtrer…"
+                         Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Grid.Row="1" Grid.Column="3"
+                           Text="{x:Bind ViewModel.ResultsLabel, Mode=OneWay}"
+                           VerticalAlignment="Bottom" Margin="0,0,0,8"
+                           Style="{StaticResource ArborynCaptionText}"
+                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+            </Grid>
+        </Border>
+
         <!-- Two-column layout -->
-        <Grid Grid.Row="1" ColumnSpacing="20">
+        <Grid Grid.Row="2" ColumnSpacing="20">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="400" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" Style="{StaticResource ArborynCardBorder}" Padding="0">
+              <Grid>
+                <!-- Empty state -->
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Spacing="8" Padding="32" MaxWidth="340"
+                            Visibility="{x:Bind ViewModel.EmptyStateVisibility, Mode=OneWay}">
+                    <TextBlock Text="&#xE721;" FontFamily="{StaticResource ArborynIconFontFamily}"
+                               FontSize="32" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource ArborynTextTertiaryBrush}" />
+                    <TextBlock Text="{x:Bind ViewModel.EmptyStateMessage, Mode=OneWay}"
+                               TextAlignment="Center" TextWrapping="Wrap"
+                               Style="{StaticResource ArborynBodyText}"
+                               Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                    <Button Content="Réinitialiser les filtres"
+                            HorizontalAlignment="Center" Margin="0,4,0,0"
+                            Style="{StaticResource ArborynSubtleButton}"
+                            Click="OnResetFilters" />
+                </StackPanel>
+
                 <ListView ItemsSource="{x:Bind ViewModel.Items, Mode=OneWay}"
                           SelectedItem="{x:Bind ViewModel.SelectedItem, Mode=TwoWay}"
                           SelectionMode="Single"
+                          Visibility="{x:Bind ViewModel.ListVisibility, Mode=OneWay}"
                           Background="Transparent">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
@@ -41,13 +137,20 @@
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="vm:LogicalFileItemView">
                             <StackPanel Spacing="3">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Border Background="{ThemeResource ArborynAccentSelectedBgBrush}"
                                             CornerRadius="{StaticResource ArborynRadiusPill}"
                                             Padding="8,2" VerticalAlignment="Center">
                                         <TextBlock Text="{x:Bind KindBadge}"
                                                    FontSize="11"
                                                    Foreground="{ThemeResource ArborynAccentTextBrush}" />
+                                    </Border>
+                                    <Border Background="{ThemeResource ArborynSubtleSecondaryBrush}"
+                                            CornerRadius="{StaticResource ArborynRadiusPill}"
+                                            Padding="8,2" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind CategoryBadge}"
+                                                   FontSize="11"
+                                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
                                     </Border>
                                     <TextBlock Text="{x:Bind SignatureDisplay}"
                                                FontFamily="{StaticResource ArborynMonoFontFamily}"
@@ -57,12 +160,17 @@
                                 </StackPanel>
                                 <TextBlock Text="{x:Bind Subtitle}"
                                            Style="{StaticResource ArborynCaptionText}"
-                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                <TextBlock Text="{x:Bind LocationLine}"
+                                           Style="{StaticResource ArborynCaptionText}"
+                                           Foreground="{ThemeResource ArborynTextTertiaryBrush}"
+                                           TextTrimming="CharacterEllipsis"
                                            Margin="0,0,0,2" />
                             </StackPanel>
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
+              </Grid>
             </Border>
 
             <Border Grid.Column="1" Style="{StaticResource ArborynCardBorder}">

@@ -19,15 +19,6 @@ namespace Arboryn.Domain.Matching;
 /// </summary>
 public static class FuzzyName
 {
-    /// <summary>
-    /// Nombre minimal de caractères alphanumériques restant dans le résidu (après
-    /// retrait des marqueurs de partition) pour qu'un nom porte une identité propre.
-    /// En deçà, le fichier n'est désigné que par sa position (chapitre N, track N…),
-    /// et le dossier parent est seul à identifier l'œuvre — le match fuzzy n'a pas
-    /// de sens (déclenche les faux positifs des séries de chapitres audiobook).
-    /// </summary>
-    private const int MinResidualAlphanumeric = 3;
-
     public static double Similarity(string left, string right)
     {
         if (left.Length == 0 || right.Length == 0)
@@ -35,7 +26,7 @@ public static class FuzzyName
             return 0.0;
         }
 
-        if (HasInsufficientResidual(left) || HasInsufficientResidual(right))
+        if (PartitionMarkers.IsPositionOnly(left) || PartitionMarkers.IsPositionOnly(right))
         {
             return 0.0;
         }
@@ -57,47 +48,6 @@ public static class FuzzyName
     }
 
     /// <summary>
-    /// Vrai si, une fois retirés les marqueurs de partition et les chiffres autonomes,
-    /// il reste moins de <see cref="MinResidualAlphanumeric"/> caractères alphanumériques —
-    /// le nom ne porte alors aucune identité indépendante de sa position dans la série.
-    /// </summary>
-    private static bool HasInsufficientResidual(string name)
-    {
-        var stripped = StripPartitionTokens(name);
-        var alnum = 0;
-        foreach (var c in stripped)
-        {
-            if (char.IsLetterOrDigit(c))
-            {
-                alnum++;
-                if (alnum >= MinResidualAlphanumeric)
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    // Marqueurs de partition : keyword précédé du début ou d'un séparateur
-    // (lookbehind non consommé), suivi de zéro+ séparateurs puis de chiffres.
-    // Couvre livres (chapitre/tome/partie), vidéo (episode/saison/season) et
-    // audio (track/disc/cd) — toutes formes courantes en FR et EN.
-    private static readonly System.Text.RegularExpressions.Regex ChapterMarkerRegex = new(
-        @"(?i)(?:^|(?<=[\s_\-.]))(chapitre|chapter|episode|saison|season|partie|volume|track|disc|part|tome|vol|cd|ep|ch|pt|tr)[\s_\-.]*(\d+)",
-        System.Text.RegularExpressions.RegexOptions.Compiled);
-
-    // Chiffres autonomes courts (1 à 5 chiffres) : couvre les séquences photo (IMG_45,
-    // DSC_1234), les numéros à 3 chiffres et les années à 4 chiffres (rapport 2020).
-    // Les nombres ≥ 6 chiffres ressemblent à des dates/timestamps (20230501, 120000) et
-    // sont conservés : deux fichiers de travail intermédiaires datés peuvent être groupés.
-    // N'attrape PAS les chiffres collés à des lettres (« v2 »), ce qui préserve les versions.
-    private static readonly System.Text.RegularExpressions.Regex StandaloneNumberRegex = new(
-        @"(?:^|(?<=[\s_\-.]))\d{1,5}(?=$|[\s_\-.])",
-        System.Text.RegularExpressions.RegexOptions.Compiled);
-
-    /// <summary>
     /// Vrai si les deux noms, une fois retirés tous leurs marqueurs de chapitre/part et
     /// leurs chiffres autonomes, sont identiques. Cas types :
     /// « hamlet chapitre 1 » vs « hamlet chapitre 2 » et « img 45 » vs « img 46 ».
@@ -105,20 +55,10 @@ public static class FuzzyName
     /// </summary>
     private static bool DifferOnlyByPartitionTokens(string left, string right)
     {
-        var strippedLeft = StripPartitionTokens(left);
-        var strippedRight = StripPartitionTokens(right);
+        var strippedLeft = PartitionMarkers.Strip(left);
+        var strippedRight = PartitionMarkers.Strip(right);
         return string.Equals(strippedLeft, strippedRight, StringComparison.Ordinal);
     }
-
-    private static string StripPartitionTokens(string name)
-    {
-        var stripped = ChapterMarkerRegex.Replace(name, " ");
-        stripped = StandaloneNumberRegex.Replace(stripped, " ");
-        return NormalizeWhitespace(stripped);
-    }
-
-    private static string NormalizeWhitespace(string value)
-        => System.Text.RegularExpressions.Regex.Replace(value.Trim(), @"\s+", " ");
 
     private static HashSet<string> Tokenize(string value) =>
         value.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

@@ -32,11 +32,16 @@ public class MigratorTests : IDisposable
 
         var version = await connection.QuerySingleAsync<int>(
             "SELECT MAX(version) FROM schema_versions");
-        version.Should().Be(1);
+        version.Should().Be(2);
 
         var volumeCount = await connection.QuerySingleAsync<int>(
             "SELECT COUNT(*) FROM volumes WHERE id = '00000000-0000-0000-0000-000000000000'");
         volumeCount.Should().Be(1);
+
+        // Migration 002 : la table des candidats d'enrichissement est présente.
+        var candidateTable = await connection.QuerySingleAsync<int>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'enrichment_candidates'");
+        candidateTable.Should().Be(1);
     }
 
     [Fact]
@@ -51,7 +56,7 @@ public class MigratorTests : IDisposable
 
         var versionCount = await connection.QuerySingleAsync<int>(
             "SELECT COUNT(*) FROM schema_versions");
-        versionCount.Should().Be(1);
+        versionCount.Should().Be(2);
     }
 
     public void Dispose()

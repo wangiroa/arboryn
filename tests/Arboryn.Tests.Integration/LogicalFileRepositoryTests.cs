@@ -137,7 +137,7 @@ public class LogicalFileRepositoryTests
         metrics.LogicalFiles.Should().Be(2);
         metrics.RedundancyRatio.Should().BeApproximately(1.5, 0.01);
 
-        var summaries = await logicalFiles.GetSummariesAsync(VolumeId.Default, CancellationToken.None);
+        var summaries = await logicalFiles.GetSummariesAsync(new CatalogFilter(), CancellationToken.None);
         summaries.Should().HaveCount(2);
         var booksSummary = summaries.Single(s => s.InstanceCount == 2);
         booksSummary.TotalSize.Should().Be(200);

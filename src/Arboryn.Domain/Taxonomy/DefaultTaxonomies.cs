@@ -15,7 +15,9 @@ public static class DefaultTaxonomies
         MediaCategory.Audiobook => new CategoryTaxonomy(
             category,
             PathTemplate: "Livres audio/{{ author }}{{ if series }}/{{ series }}{{ end }}",
-            NameTemplate: "{{ author }} - {{ if series }}{{ series }} - {{ volume | format \"00\" }} - {{ end }}{{ title }}.{{ ext }}",
+            // Œuvre multi-fichiers (chapitre présent) : « Titre œuvre - chapitre » (le titre vient
+            // du dossier, cf. TemplateFields). Sinon : « Auteur - [Série - NN - ]Titre ».
+            NameTemplate: "{{ if chapter }}{{ title }} - {{ chapter }}{{ else }}{{ author }} - {{ if series }}{{ series }} - {{ volume | format \"00\" }} - {{ end }}{{ title }}{{ end }}.{{ ext }}",
             RequiredFields: new[] { "author", "title" }),
 
         MediaCategory.Book => new CategoryTaxonomy(
@@ -23,6 +25,15 @@ public static class DefaultTaxonomies
             PathTemplate: "Livres/{{ author }}{{ if series }}/{{ series }}{{ end }}",
             NameTemplate: "{{ author }} - {{ if series }}{{ series }} - {{ volume | format \"00\" }} - {{ end }}{{ title }}.{{ ext }}",
             RequiredFields: new[] { "author", "title" }),
+
+        // Comics / BD : une série est souvent découpée en plusieurs fichiers (un par tome).
+        // Le titre de la série vient du dossier (cf. TemplateFields) et chaque fichier porte un
+        // numéro zero-paddé : « Bandes dessinées/<Série>/<Série> - 001.cbz ».
+        MediaCategory.Comic => new CategoryTaxonomy(
+            category,
+            PathTemplate: "Bandes dessinées/{{ title }}",
+            NameTemplate: "{{ if chapter }}{{ title }} - {{ chapter }}{{ else }}{{ title }}{{ end }}.{{ ext }}",
+            RequiredFields: new[] { "title" }),
 
         MediaCategory.Video => new CategoryTaxonomy(
             category,
@@ -50,4 +61,54 @@ public static class DefaultTaxonomies
 
         _ => null,
     };
+
+    /// <summary>
+    /// Anciens templates de défaut désormais remplacés par une version plus récente de
+    /// <see cref="For"/>. Conservés pour reconnaître une taxonomie stockée qui n'est qu'un
+    /// ancien défaut non personnalisé, afin de la laisser repasser au défaut courant
+    /// (cf. <see cref="IsShippedDefault"/>).
+    ///
+    /// CONTRAT : à chaque évolution d'un template de <see cref="For"/>, ajouter ici l'ancien
+    /// template (tel qu'il était livré) pour que les bases existantes se mettent à jour.
+    /// </summary>
+    private static readonly IReadOnlyList<CategoryTaxonomy> SupersededDefaults = new[]
+    {
+        // Livres audio — avant l'ajout de la branche {{ if chapter }} (œuvres multi-fichiers,
+        // 2026-06-07). L'ancien template ne portait pas le numéro de chapitre.
+        new CategoryTaxonomy(
+            MediaCategory.Audiobook,
+            PathTemplate: "Livres audio/{{ author }}{{ if series }}/{{ series }}{{ end }}",
+            NameTemplate: "{{ author }} - {{ if series }}{{ series }} - {{ volume | format \"00\" }} - {{ end }}{{ title }}.{{ ext }}",
+            RequiredFields: new[] { "author", "title" }),
+    };
+
+    /// <summary>
+    /// Vrai si <paramref name="candidate"/> correspond — aux templates et champs requis près,
+    /// la version étant ignorée — à un défaut livré pour sa catégorie, courant ou ancien.
+    /// Permet de distinguer une taxonomie stockée non personnalisée (à laisser suivre le
+    /// défaut du code) d'une véritable personnalisation utilisateur (à préserver).
+    /// </summary>
+    public static bool IsShippedDefault(CategoryTaxonomy candidate)
+    {
+        var current = For(candidate.Category);
+        if (current is not null && TemplatesMatch(current, candidate))
+        {
+            return true;
+        }
+
+        foreach (var legacy in SupersededDefaults)
+        {
+            if (legacy.Category == candidate.Category && TemplatesMatch(legacy, candidate))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TemplatesMatch(CategoryTaxonomy a, CategoryTaxonomy b)
+        => string.Equals(a.PathTemplate, b.PathTemplate, StringComparison.Ordinal)
+           && string.Equals(a.NameTemplate, b.NameTemplate, StringComparison.Ordinal)
+           && a.RequiredFields.SequenceEqual(b.RequiredFields, StringComparer.Ordinal);
 }

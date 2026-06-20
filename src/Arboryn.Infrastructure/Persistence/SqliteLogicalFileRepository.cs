@@ -159,37 +159,166 @@ public sealed class SqliteLogicalFileRepository : ILogicalFileRepository
     }
 
     public async Task<IReadOnlyList<LogicalFileSummary>> GetSummariesAsync(
-        VolumeId volumeId, CancellationToken cancellationToken)
+        CatalogFilter filter, CancellationToken cancellationToken)
     {
-        const string sql = """
-            SELECT lf.id                     AS Id,
-                   lf.content_signature_kind AS Kind,
-                   lf.content_signature      AS Signature,
-                   COUNT(fi.id)              AS InstanceCount,
-                   COALESCE(SUM(fi.size), 0) AS TotalSize,
-                   COALESCE(MAX(fi.size), 0) AS MaxSize,
-                   MIN(fi.id)                AS SampleInstanceId
+        // Filtrage au niveau instance puis agrégation par LogicalFile. Un LogicalFile
+        // est retenu dès qu'au moins une de ses instances satisfait les critères.
+        var clauses = new List<string> { "fi.status = 'active'" };
+        var parameters = new DynamicParameters();
+
+        if (filter.Category is { } category)
+        {
+            clauses.Add("lf.category = @Category");
+            parameters.Add("Category", LogicalFileEnums.ToDb(category));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.VolumeId))
+        {
+            clauses.Add("fi.volume_id = @VolumeId");
+            parameters.Add("VolumeId", filter.VolumeId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Directory))
+        {
+            // Sous-arbre du dossier choisi : on ajoute un séparateur final pour ne pas
+            // capturer un dossier voisin de même préfixe (« C:\Photos » vs « C:\Photos2 »).
+            clauses.Add("fi.relative_path LIKE @DirPrefix ESCAPE '\\'");
+            parameters.Add("DirPrefix", LikeDirPrefix(filter.Directory!));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            // Recherche libre sur nom, chemin et valeurs de métadonnées.
+            clauses.Add("""
+                (fi.canonical_name LIKE @Search ESCAPE '\'
+                 OR fi.relative_path LIKE @Search ESCAPE '\'
+                 OR EXISTS (SELECT 1 FROM file_metadata m
+                            WHERE m.file_instance_id = fi.id AND m.value LIKE @Search ESCAPE '\'))
+                """);
+            parameters.Add("Search", LikeContains(filter.Search!));
+        }
+
+        var where = string.Join(" AND ", clauses);
+        // CAST explicite des colonnes calculées : sans type déclaré, Microsoft.Data.Sqlite
+        // renvoie byte[] par défaut pour ces colonnes, ce qui casse la matérialisation Dapper
+        // du record (constructeur positionnel typé long/string).
+        var sql = $"""
+            SELECT CAST(lf.id AS TEXT)                     AS Id,
+                   CAST(lf.category AS TEXT)               AS Category,
+                   CAST(lf.content_signature_kind AS TEXT) AS Kind,
+                   CAST(lf.content_signature AS TEXT)      AS Signature,
+                   CAST(COUNT(fi.id) AS INTEGER)           AS InstanceCount,
+                   CAST(COALESCE(SUM(fi.size), 0) AS INTEGER) AS TotalSize,
+                   CAST(COALESCE(MAX(fi.size), 0) AS INTEGER) AS MaxSize,
+                   CAST(MIN(fi.id) AS TEXT)                AS SampleInstanceId,
+                   CAST(MIN(fi.relative_path) AS TEXT)     AS SampleRelativePath,
+                   CAST(MIN(fi.volume_id) AS TEXT)         AS SampleVolumeId
             FROM logical_files lf
             JOIN file_instances fi ON fi.logical_file_id = lf.id
-            WHERE fi.volume_id = @VolumeId AND fi.status = 'active'
-            GROUP BY lf.id, lf.content_signature_kind, lf.content_signature
+            WHERE {where}
+            GROUP BY lf.id, lf.category, lf.content_signature_kind, lf.content_signature
             ORDER BY (COALESCE(SUM(fi.size), 0) - COALESCE(MAX(fi.size), 0)) DESC, COUNT(fi.id) DESC;
             """;
 
         await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
-        var rows = await connection.QueryAsync<SummaryRow>(new CommandDefinition(
-            sql, new { VolumeId = volumeId.Value }, cancellationToken: cancellationToken)).ConfigureAwait(false);
 
-        return rows.Select(r => new LogicalFileSummary(
-            new LogicalFileId(r.Id),
-            new ContentSignature(LogicalFileEnums.KindFromDb(r.Kind), r.Signature),
-            (int)r.InstanceCount,
-            r.TotalSize,
-            r.MaxSize,
-            new FileInstanceId(r.SampleInstanceId))).ToList();
+        var volumeNames = (await connection.QueryAsync<(string Id, string Name)>(new CommandDefinition(
+            "SELECT id, name FROM volumes;", cancellationToken: cancellationToken)).ConfigureAwait(false))
+            .ToDictionary(v => v.Id, v => v.Name, StringComparer.Ordinal);
+
+        // Lecture en lignes dynamiques plutôt qu'en record positionnel : pour les colonnes
+        // calculées (COUNT/SUM/MIN…) sans type déclaré, Microsoft.Data.Sqlite expose byte[]
+        // via GetFieldType, ce qui fait échouer la matérialisation par constructeur de Dapper.
+        // GetValue, lui, renvoie la valeur réelle (long/string) — on mappe donc à la main.
+        var rows = await connection.QueryAsync(new CommandDefinition(
+            sql, parameters, cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        var result = new List<LogicalFileSummary>();
+        foreach (var row in rows)
+        {
+            var r = (IDictionary<string, object>)row;
+            var volumeId = AsString(r["SampleVolumeId"]);
+            result.Add(new LogicalFileSummary(
+                new LogicalFileId(AsString(r["Id"])),
+                new ContentSignature(LogicalFileEnums.KindFromDb(AsString(r["Kind"])), AsString(r["Signature"])),
+                (int)AsLong(r["InstanceCount"]),
+                AsLong(r["TotalSize"]),
+                AsLong(r["MaxSize"]),
+                new FileInstanceId(AsString(r["SampleInstanceId"])),
+                LogicalFileEnums.CategoryFromDb(AsString(r["Category"])),
+                DirectoryOf(AsString(r["SampleRelativePath"])),
+                volumeNames.TryGetValue(volumeId, out var name) ? name : volumeId));
+        }
+
+        return result;
     }
 
-    private sealed record SummaryRow(string Id, string Kind, string Signature, long InstanceCount, long TotalSize, long MaxSize, string SampleInstanceId);
+    private static string AsString(object? value) => value switch
+    {
+        null => string.Empty,
+        string s => s,
+        byte[] b => System.Text.Encoding.UTF8.GetString(b),
+        _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
+    };
+
+    private static long AsLong(object? value) => value switch
+    {
+        null => 0L,
+        long l => l,
+        int i => i,
+        _ => Convert.ToInt64(value, CultureInfo.InvariantCulture),
+    };
+
+    public async Task<CatalogFilterOptions> GetFilterOptionsAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+        var categories = (await connection.QueryAsync<string>(new CommandDefinition("""
+            SELECT DISTINCT lf.category
+            FROM logical_files lf
+            JOIN file_instances fi ON fi.logical_file_id = lf.id
+            WHERE fi.status = 'active';
+            """, cancellationToken: cancellationToken)).ConfigureAwait(false))
+            .Select(LogicalFileEnums.CategoryFromDb)
+            .Distinct()
+            .OrderBy(c => c.ToString(), StringComparer.Ordinal)
+            .ToList();
+
+        var volumes = (await connection.QueryAsync<(string Id, string Name)>(new CommandDefinition("""
+            SELECT DISTINCT v.id, v.name
+            FROM volumes v
+            JOIN file_instances fi ON fi.volume_id = v.id
+            WHERE fi.status = 'active'
+            ORDER BY v.name;
+            """, cancellationToken: cancellationToken)).ConfigureAwait(false))
+            .Select(v => new VolumeOption(v.Id, v.Name))
+            .ToList();
+
+        return new CatalogFilterOptions(categories, volumes);
+    }
+
+    /// <summary>Répertoire parent d'un chemin (absolu jusqu'à l'Inc 9). Vide si introuvable.</summary>
+    private static string DirectoryOf(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return string.Empty;
+        }
+
+        var separator = path.LastIndexOfAny(new[] { '\\', '/' });
+        return separator <= 0 ? string.Empty : path[..separator];
+    }
+
+    /// <summary>Échappe les jokers LIKE (% _ \) d'une valeur littérale.</summary>
+    private static string EscapeLike(string value)
+        => value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+
+    private static string LikeContains(string value) => "%" + EscapeLike(value.Trim()) + "%";
+
+    /// <summary>Motif LIKE pour le sous-arbre d'un dossier (séparateur final garanti).</summary>
+    private static string LikeDirPrefix(string directory)
+        => EscapeLike(directory.Trim().TrimEnd('\\', '/') + "\\") + "%";
+
 
     public async Task DeleteOrphansAsync(CancellationToken cancellationToken)
     {

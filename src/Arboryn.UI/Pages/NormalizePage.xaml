@@ -100,10 +100,29 @@
             </Button>
         </Grid>
 
-        <TextBlock Grid.Row="3"
-                   Text="Aperçu Avant → Après"
-                   Style="{StaticResource ArborynCaptionText}"
-                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+        <!-- Preview header + global selection -->
+        <Grid Grid.Row="3" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <CheckBox Grid.Column="0" Content="Tout sélectionner"
+                      IsChecked="{x:Bind ViewModel.AllSelected, Mode=OneWay}"
+                      Click="OnSelectAllClick"
+                      Visibility="{x:Bind ViewModel.HasOperations, Mode=OneWay}" />
+            <TextBlock Grid.Column="1"
+                       Text="Aperçu Avant → Après"
+                       VerticalAlignment="Center"
+                       Style="{StaticResource ArborynCaptionText}"
+                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+            <TextBlock Grid.Column="2"
+                       Text="{x:Bind ViewModel.SelectionSummary, Mode=OneWay}"
+                       VerticalAlignment="Center"
+                       Visibility="{x:Bind ViewModel.HasOperations, Mode=OneWay}"
+                       Style="{StaticResource ArborynCaptionText}"
+                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+        </Grid>
 
         <!-- Preview list -->
         <Border Grid.Row="4" Style="{StaticResource ArborynCardBorder}" Padding="0">
@@ -120,16 +139,20 @@
                         <Grid ColumnSpacing="12">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0"
+                            <CheckBox Grid.Column="0" MinWidth="0" VerticalAlignment="Center"
+                                      IsChecked="{x:Bind IsSelected, Mode=TwoWay}"
+                                      ToolTipService.ToolTip="Inclure cette opération" />
+                            <Border Grid.Column="1"
                                     Background="{ThemeResource ArborynAccentSelectedBgBrush}"
                                     CornerRadius="{StaticResource ArborynRadiusPill}"
                                     Padding="10,3" VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind KindLabel}" FontSize="11"
                                            Foreground="{ThemeResource ArborynAccentTextBrush}" />
                             </Border>
-                            <StackPanel Grid.Column="1" Spacing="2">
+                            <StackPanel Grid.Column="2" Spacing="2">
                                 <TextBlock Text="{x:Bind OldPath}"
                                            Style="{StaticResource ArborynCaptionText}"
                                            Foreground="{ThemeResource ArborynTextSecondaryBrush}"

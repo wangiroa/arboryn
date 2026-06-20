@@ -15,18 +15,43 @@ public sealed partial class SettingsPage : Page
 {
     public MainViewModel ViewModel { get; private set; } = null!;
 
+    public EnrichmentViewModel Enrichment { get; private set; } = null!;
+
     public SettingsPage()
     {
         InitializeComponent();
     }
 
-    protected override void OnNavigatedTo(NavigationEventArgs e)
+    protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
         if (e.Parameter is IServiceProvider services)
         {
             ViewModel = services.GetRequiredService<MainViewModel>();
+            Enrichment = services.GetRequiredService<EnrichmentViewModel>();
             this.DataContext = ViewModel;
+            await Enrichment.LoadAsync();
+        }
+    }
+
+    private async void OnSaveEnrichmentClick(object sender, RoutedEventArgs e) => await Enrichment.SaveAsync();
+
+    private async void OnEnrichCatalogClick(object sender, RoutedEventArgs e) => await Enrichment.EnrichCatalogAsync();
+
+    private async void OnEnrichFolderClick(object sender, RoutedEventArgs e)
+    {
+        var picker = new FolderPicker { SuggestedStartLocation = PickerLocationId.ComputerFolder };
+        picker.FileTypeFilter.Add("*");
+        var window = (Microsoft.UI.Xaml.Application.Current as App)?.RootShell;
+        if (window is null)
+        {
+            return;
+        }
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder is not null)
+        {
+            await Enrichment.EnrichFolderAsync(folder.Path);
         }
     }
 

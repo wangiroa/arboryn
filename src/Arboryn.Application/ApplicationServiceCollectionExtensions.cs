@@ -24,6 +24,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddTransient<DetectAudioDuplicatesHandler>();
         services.AddTransient<PromoteAudioHandler>();
         services.AddTransient<CanonicalPathResolver>();
+        services.AddTransient<UpgradeDefaultTaxonomiesHandler>();
         services.AddTransient<PlanUniformizationHandler>();
         services.AddTransient<ExecuteUniformizationHandler>();
         services.AddTransient<UndoUniformizationHandler>();
@@ -32,6 +33,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddTransient<PrepareTriageHandler>();
         services.AddTransient<ApplyTriageHandler>();
         services.AddTransient<LearnTriagePatternsHandler>();
+        services.AddTransient<EnrichMetadataHandler>();
+        services.AddTransient<EnrichDirectoryHandler>();
+        services.AddTransient<ReviewEnrichmentCandidatesHandler>();
         return services;
     }
 }

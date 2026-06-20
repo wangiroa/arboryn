@@ -108,7 +108,10 @@ public class PromoteByHashTests
         public Task<CatalogMetrics> GetMetricsAsync(VolumeId volumeId, CancellationToken cancellationToken)
             => throw new NotImplementedException("Pas utilisé par ce test.");
 
-        public Task<IReadOnlyList<LogicalFileSummary>> GetSummariesAsync(VolumeId volumeId, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<LogicalFileSummary>> GetSummariesAsync(CatalogFilter filter, CancellationToken cancellationToken)
+            => throw new NotImplementedException("Pas utilisé par ce test.");
+
+        public Task<CatalogFilterOptions> GetFilterOptionsAsync(CancellationToken cancellationToken)
             => throw new NotImplementedException("Pas utilisé par ce test.");
     }
 

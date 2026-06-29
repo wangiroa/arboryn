@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Arboryn.Application.Abstractions;
 using Arboryn.Application.UseCases;
 using Arboryn.Domain.ValueObjects;
+using Arboryn.UI.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Arboryn.UI.ViewModels;
@@ -21,6 +22,7 @@ public sealed class EnrichmentViewModel : INotifyPropertyChanged
     private readonly ISettingsRepository _settings;
     private readonly IEnrichmentKeyring _keyring;
     private readonly EnrichDirectoryHandler _enrich;
+    private readonly ActiveVolumeContext _activeVolume;
     private readonly ILogger<EnrichmentViewModel> _logger;
 
     private bool _onlineModeEnabled;
@@ -39,11 +41,13 @@ public sealed class EnrichmentViewModel : INotifyPropertyChanged
         ISettingsRepository settings,
         IEnrichmentKeyring keyring,
         EnrichDirectoryHandler enrich,
+        ActiveVolumeContext activeVolume,
         ILogger<EnrichmentViewModel> logger)
     {
         _settings = settings;
         _keyring = keyring;
         _enrich = enrich;
+        _activeVolume = activeVolume;
         _logger = logger;
     }
 
@@ -126,13 +130,13 @@ public sealed class EnrichmentViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>Enrichit tout le catalogue du volume par défaut.</summary>
+    /// <summary>Enrichit tout le catalogue du volume actif.</summary>
     public Task EnrichCatalogAsync()
-        => RunAsync(progress => _enrich.ExecuteCatalogAsync(VolumeId.Default, progress));
+        => RunAsync(progress => _enrich.ExecuteCatalogAsync(_activeVolume.Current, progress));
 
     /// <summary>Enrichit les fichiers sous un dossier choisi.</summary>
     public Task EnrichFolderAsync(string folderPath)
-        => RunAsync(progress => _enrich.ExecuteAsync(VolumeId.Default, FilePath.From(folderPath), progress));
+        => RunAsync(progress => _enrich.ExecuteAsync(_activeVolume.Current, FilePath.From(folderPath), progress));
 
     private async Task RunAsync(Func<IProgress<int>, Task<EnrichDirectoryResult>> run)
     {

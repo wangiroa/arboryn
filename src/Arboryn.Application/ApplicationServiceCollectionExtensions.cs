@@ -36,6 +36,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddTransient<EnrichMetadataHandler>();
         services.AddTransient<EnrichDirectoryHandler>();
         services.AddTransient<ReviewEnrichmentCandidatesHandler>();
+        services.AddTransient<EnrollVolumeHandler>();
         return services;
     }
 }

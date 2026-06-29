@@ -64,7 +64,24 @@
       "PowerShell(& \"C:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\Assets\\\\generate-app-icon.ps1\")",
       "PowerShell(& \"C:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\Assets\\\\generate-app-icon.ps1\" 2>&1)",
       "Bash(ls -la)",
-      "Bash(dir)"
+      "Bash(dir)",
+      "PowerShell(\"---\")",
+      "PowerShell($gh = \\(Get-Command gh -ErrorAction SilentlyContinue\\); if \\($gh\\) { \"gh installed: $\\($gh.Source\\)\"; gh --version | Select-Object -First 1 } else { \"gh NOT installed\" }; \"---\"; $gcm = \\(Get-Command git-credential-manager -ErrorAction SilentlyContinue\\); if \\($gcm\\) { \"GCM: $\\($gcm.Source\\)\" } else { \"GCM not on PATH\" }; \"---\"; git config --show-origin --get-all credential.helper)",
+      "PowerShell($p = Get-Process Arboryn.UI -ErrorAction SilentlyContinue; if \\($p\\) { \"RUNNING pid=$\\($p.Id\\) — output DLLs are locked\" } else { \"not running\" })",
+      "Bash(dotnet restore *)",
+      "PowerShell(Get-Process Arboryn.UI -ErrorAction SilentlyContinue)",
+      "Skill(run)",
+      "Skill(run:*)",
+      "PowerShell($db = \"$env:LOCALAPPDATA\\\\Arboryn\\\\index.db\"; if \\(Test-Path $db\\) { \"DB exists: $\\(\\(Get-Item $db\\).Length\\) bytes\" } else { \"No DB yet\" })",
+      "PowerShell(git -C c:\\\\dev\\\\arboryn status --short)",
+      "PowerShell(git -C c:\\\\dev\\\\arboryn diff --stat -- src/Arboryn.Domain/Matching/)",
+      "PowerShell(\"---DIFF FuzzyName/PartitionMarkers---\")",
+      "PowerShell(Stop-Process -Id 51368 -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(Test-Path 'c:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\bin\\\\x64\\\\Debug\\\\net8.0-windows10.0.19041.0\\\\win-x64\\\\Arboryn.UI.exe' | ForEach-Object { \"exe present: $_\" }; Get-Item 'c:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\bin\\\\x64\\\\Debug\\\\net8.0-windows10.0.19041.0\\\\win-x64\\\\Arboryn.UI.exe' | Select-Object LastWriteTime)",
+      "PowerShell($dir = 'c:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\bin\\\\x64\\\\Debug\\\\net8.0-windows10.0.19041.0\\\\win-x64'; Get-ChildItem \"$dir\\\\Arboryn.UI.exe\",\"$dir\\\\Arboryn.Application.dll\",\"$dir\\\\Arboryn.Domain.dll\" | Select-Object Name, LastWriteTime)",
+      "PowerShell(dotnet build C:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\Arboryn.UI.csproj -c Debug -r win-x64 /p:Platform=x64 -v q 2>&1)",
+      "PowerShell($exe = \"C:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\bin\\\\x64\\\\Debug\\\\net8.0-windows10.0.19041.0\\\\win-x64\\\\Arboryn.UI.exe\"; $p = Start-Process -FilePath $exe -PassThru; Start-Sleep -Seconds 6; if \\(-not $p.HasExited\\) { \"ALIVE pid=$\\($p.Id\\) — app démarrée sans crash\"; Stop-Process -Id $p.Id -Force } else { \"EXITED early code=$\\($p.ExitCode\\)\" })"
     ],
     "additionalDirectories": [
       "c:\\Users\\Dominique\\.claude\\projects\\c--dev-arboryn\\memory"

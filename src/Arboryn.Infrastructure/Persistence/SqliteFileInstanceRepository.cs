@@ -160,6 +160,29 @@ public sealed class SqliteFileInstanceRepository
             cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
+    public async Task<int> ReassignDefaultUnderRootAsync(
+        FilePath root, VolumeId targetVolumeId, CancellationToken cancellationToken)
+    {
+        // Même technique de préfixe que GetActiveInstancesAsync (substr, sans jokers LIKE
+        // à échapper). La racine d'un volume est soit une racine de lecteur (« E:\ », qui
+        // se termine déjà par \), soit une racine de partage (« \\hôte\partage », à laquelle
+        // on ajoute le séparateur). On lowercase pour une comparaison insensible à la casse.
+        const string sql = """
+            UPDATE file_instances
+            SET volume_id = @Target
+            WHERE volume_id = @Default
+              AND substr(lower(relative_path), 1, @PrefixLen) = @Prefix;
+            """;
+
+        var prefix = (root.Value.EndsWith('\\') ? root.Value : root.Value + "\\").ToLowerInvariant();
+
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        return await connection.ExecuteAsync(new CommandDefinition(
+            sql,
+            new { Target = targetVolumeId.Value, Default = VolumeId.Default.Value, Prefix = prefix, PrefixLen = prefix.Length },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+    }
+
     public async Task UpdatePathAsync(FileInstanceId id, FilePath newPath, CancellationToken cancellationToken)
     {
         var canonical = CanonicalName.From(System.IO.Path.GetFileName(newPath.Value));

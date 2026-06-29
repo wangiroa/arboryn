@@ -12,6 +12,7 @@ using Arboryn.Application.Abstractions;
 using Arboryn.Application.UseCases;
 using Arboryn.Domain.Enums;
 using Arboryn.Domain.ValueObjects;
+using Arboryn.UI.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Arboryn.UI.ViewModels;
@@ -38,6 +39,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly DeleteFilesHandler _deleteHandler;
     private readonly UndoLastBatchHandler _undoHandler;
     private readonly EnrichDirectoryHandler _enrichHandler;
+    private readonly EnrollVolumeHandler _enrollHandler;
+    private readonly ActiveVolumeContext _activeVolume;
     private readonly ISettingsRepository _settings;
     private readonly ILogger<MainViewModel> _logger;
 
@@ -76,6 +79,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         DeleteFilesHandler deleteHandler,
         UndoLastBatchHandler undoHandler,
         EnrichDirectoryHandler enrichHandler,
+        EnrollVolumeHandler enrollHandler,
+        ActiveVolumeContext activeVolume,
         ISettingsRepository settings,
         ILogger<MainViewModel> logger)
     {
@@ -90,6 +95,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _deleteHandler = deleteHandler;
         _undoHandler = undoHandler;
         _enrichHandler = enrichHandler;
+        _enrollHandler = enrollHandler;
+        _activeVolume = activeVolume;
         _settings = settings;
         _logger = logger;
         _selectedMediaFilter = MediaFilters[0];
@@ -668,7 +675,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>Vide le catalogue du volume par défaut.</summary>
+    /// <summary>Vide le catalogue du volume actif.</summary>
     public async Task ClearCatalogAsync()
     {
         if (IsScanning || IsDeleting)
@@ -678,7 +685,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         try
         {
-            await _clearHandler.ExecuteAsync(VolumeId.Default);
+            await _clearHandler.ExecuteAsync(_activeVolume.Current);
             _allGroups.Clear();
             RebuildFilteredView();
             StatusText = "Catalogue vidé.";
@@ -711,12 +718,25 @@ public sealed class MainViewModel : INotifyPropertyChanged
             _pendingFolderPath = root.Value;
             CurrentFolder = root.Value;
 
+            // Inc 9 : identifie/enrôle le volume du dossier choisi et le rend actif. Les instances
+            // « default » de ce sous-arbre y sont migrées. Toutes les opérations suivantes (scan,
+            // détection, enrichissement) portent sur ce volume.
+            StatusText = "Identification du volume…";
+            var enroll = await Task.Run(() => _enrollHandler.ExecuteAsync(root, cancellationToken: token), token);
+            _activeVolume.Set(enroll.Volume.Id, enroll.Volume.Name);
+            if (enroll.MigratedInstances > 0)
+            {
+                _logger.LogInformation(
+                    "{Count} instance(s) migrée(s) du volume « default » vers {Volume}",
+                    enroll.MigratedInstances, enroll.Volume.Name);
+            }
+
             // Progress créé sur le thread UI : ses rappels sont marshalés vers l'UI,
             // ce qui permet de lancer le travail lourd sur un thread de fond.
             var progress = new Progress<ScanProgress>(
                 p => StatusText = $"Indexation : {p.FilesProcessed} fichiers…");
 
-            await Task.Run(() => _scanHandler.ExecuteAsync(root, VolumeId.Default, progress, token), token);
+            await Task.Run(() => _scanHandler.ExecuteAsync(root, _activeVolume.Current, progress, token), token);
 
             // Enrichissement automatique post-scan, si activé (le handler respecte lui-même le
             // mode en ligne global/par-catégorie et le cache ; rien ne sort en mode local-only).
@@ -761,7 +781,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             StatusText = "Enrichissement en ligne…";
             var progress = new Progress<int>(n => StatusText = $"Enrichissement : {n} fichier(s)…");
             var result = await Task.Run(
-                () => _enrichHandler.ExecuteAsync(VolumeId.Default, root, progress, cancellationToken), cancellationToken);
+                () => _enrichHandler.ExecuteAsync(_activeVolume.Current, root, progress, cancellationToken), cancellationToken);
             _logger.LogInformation(
                 "Enrichissement post-scan : {Applied} champ(s) appliqué(s) sur {Enriched} fichier(s).",
                 result.AppliedFields, result.EnrichedFiles);
@@ -791,7 +811,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             StatusText = "Détection des doublons exacts…";
             var views = await Task.Run(
-                () => _detectHandler.ExecuteDetailedAsync(VolumeId.Default, underRoot, cancellationToken), cancellationToken);
+                () => _detectHandler.ExecuteDetailedAsync(_activeVolume.Current, underRoot, cancellationToken), cancellationToken);
             var items = views.Select(v => new DuplicateGroupItem(v)).ToList();
             detected.AddRange(items);
             parts.Add($"{items.Count} exact(s)");
@@ -801,7 +821,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             StatusText = "Détection des doublons flous…";
             var views = await Task.Run(
-                () => _fuzzyHandler.ExecuteAsync(VolumeId.Default, underRoot, _fuzzyThreshold, cancellationToken), cancellationToken);
+                () => _fuzzyHandler.ExecuteAsync(_activeVolume.Current, underRoot, _fuzzyThreshold, cancellationToken), cancellationToken);
             var items = views.Select(v => new DuplicateGroupItem(v)).ToList();
             detected.AddRange(items);
             parts.Add($"{items.Count} flou(s)");
@@ -812,12 +832,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
             var progress = new Progress<PerceptualHashProgress>(
                 p => StatusText = $"Empreintes perceptuelles : {p.Hashed} image(s) analysée(s)…");
             await Task.Run(
-                () => _computePerceptualHandler.ExecuteAsync(VolumeId.Default, underRoot, progress, cancellationToken), cancellationToken);
+                () => _computePerceptualHandler.ExecuteAsync(_activeVolume.Current, underRoot, progress, cancellationToken), cancellationToken);
 
             StatusText = "Détection des doublons perceptuels…";
             var views = await Task.Run(
                 () => _detectPerceptualHandler.ExecuteAsync(
-                    VolumeId.Default, underRoot, DetectPerceptualDuplicatesHandler.DefaultMaxDistance, cancellationToken),
+                    _activeVolume.Current, underRoot, DetectPerceptualDuplicatesHandler.DefaultMaxDistance, cancellationToken),
                 cancellationToken);
             var items = views.Select(v => new DuplicateGroupItem(v)).ToList();
             detected.AddRange(items);

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Arboryn.Application.UseCases;
 using Arboryn.Domain.Enums;
 using Arboryn.Domain.ValueObjects;
+using Arboryn.UI.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Arboryn.UI.ViewModels;
@@ -21,6 +22,7 @@ public sealed class NormalizeViewModel : INotifyPropertyChanged
     private readonly PlanUniformizationHandler _planner;
     private readonly ExecuteUniformizationHandler _executor;
     private readonly UndoUniformizationHandler _undo;
+    private readonly ActiveVolumeContext _activeVolume;
     private readonly ILogger<NormalizeViewModel> _logger;
 
     private string _currentFolder = "(aucun dossier sélectionné)";
@@ -37,11 +39,13 @@ public sealed class NormalizeViewModel : INotifyPropertyChanged
         PlanUniformizationHandler planner,
         ExecuteUniformizationHandler executor,
         UndoUniformizationHandler undo,
+        ActiveVolumeContext activeVolume,
         ILogger<NormalizeViewModel> logger)
     {
         _planner = planner;
         _executor = executor;
         _undo = undo;
+        _activeVolume = activeVolume;
         _logger = logger;
     }
 
@@ -150,7 +154,7 @@ public sealed class NormalizeViewModel : INotifyPropertyChanged
         try
         {
             var root = FilePath.From(_selectedFolder!);
-            var plan = await Task.Run(() => _planner.ExecuteAsync(VolumeId.Default, root));
+            var plan = await Task.Run(() => _planner.ExecuteAsync(_activeVolume.Current, root));
             _plan = plan;
             _libraryRoot = root;
             _targets = plan.Targets ?? Array.Empty<PlannedTarget>();

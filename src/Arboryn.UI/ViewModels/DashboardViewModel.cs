@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Arboryn.Application.Abstractions;
 using Arboryn.Domain.ValueObjects;
+using Arboryn.UI.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Arboryn.UI.ViewModels;
@@ -15,6 +16,7 @@ namespace Arboryn.UI.ViewModels;
 public sealed class DashboardViewModel : INotifyPropertyChanged
 {
     private readonly ILogicalFileRepository _logicalFiles;
+    private readonly ActiveVolumeContext _activeVolume;
     private readonly ILogger<DashboardViewModel> _logger;
 
     private long _logicalFileCount;
@@ -23,9 +25,11 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     private bool _isLoading = true;
     private string _statusLine = "Chargement de l'inventaire…";
 
-    public DashboardViewModel(ILogicalFileRepository logicalFiles, ILogger<DashboardViewModel> logger)
+    public DashboardViewModel(
+        ILogicalFileRepository logicalFiles, ActiveVolumeContext activeVolume, ILogger<DashboardViewModel> logger)
     {
         _logicalFiles = logicalFiles;
+        _activeVolume = activeVolume;
         _logger = logger;
     }
 
@@ -83,7 +87,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         try
         {
             var metrics = await Task.Run(
-                () => _logicalFiles.GetMetricsAsync(VolumeId.Default, cancellationToken),
+                () => _logicalFiles.GetMetricsAsync(_activeVolume.Current, cancellationToken),
                 cancellationToken).ConfigureAwait(true);
 
             LogicalFileCount = metrics.LogicalFiles;

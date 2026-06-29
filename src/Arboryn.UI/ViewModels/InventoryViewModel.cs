@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Arboryn.Application.Abstractions;
 using Arboryn.Domain.Enums;
 using Arboryn.Domain.ValueObjects;
+using Arboryn.UI.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 
@@ -24,6 +25,7 @@ public sealed class InventoryViewModel : INotifyPropertyChanged
 
     private readonly ILogicalFileRepository _logicalFiles;
     private readonly IFileMetadataRepository _metadata;
+    private readonly ActiveVolumeContext _activeVolume;
     private readonly ILogger<InventoryViewModel> _logger;
     private string _metricsLabel = "Chargement…";
     private string _resultsLabel = string.Empty;
@@ -45,10 +47,12 @@ public sealed class InventoryViewModel : INotifyPropertyChanged
     public InventoryViewModel(
         ILogicalFileRepository logicalFiles,
         IFileMetadataRepository metadata,
+        ActiveVolumeContext activeVolume,
         ILogger<InventoryViewModel> logger)
     {
         _logicalFiles = logicalFiles;
         _metadata = metadata;
+        _activeVolume = activeVolume;
         _logger = logger;
 
         Categories.Add(CategoryFilterOption.All);
@@ -215,7 +219,7 @@ public sealed class InventoryViewModel : INotifyPropertyChanged
         {
             var (metrics, options) = await Task.Run(async () =>
             {
-                var m = await _logicalFiles.GetMetricsAsync(VolumeId.Default, cancellationToken).ConfigureAwait(false);
+                var m = await _logicalFiles.GetMetricsAsync(_activeVolume.Current, cancellationToken).ConfigureAwait(false);
                 var o = await _logicalFiles.GetFilterOptionsAsync(cancellationToken).ConfigureAwait(false);
                 return (Metrics: m, Options: o);
             }, cancellationToken);

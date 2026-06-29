@@ -48,8 +48,12 @@ internal static class AppHostBuilder
                 services.AddArborynInfrastructure(connectionString);
                 services.AddArborynApplication();
 
+                // Volume actif partagé (Inc 9) — lu par tous les VMs, défini par le scan / la page Volumes.
+                services.AddSingleton<Services.ActiveVolumeContext>();
+
                 // ViewModels partagés (Singleton — survivent à la navigation).
                 services.AddSingleton<MainViewModel>();
+                services.AddSingleton<VolumesViewModel>();
                 services.AddSingleton<DashboardViewModel>();
                 services.AddSingleton<InventoryViewModel>();
                 services.AddSingleton<NormalizeViewModel>();

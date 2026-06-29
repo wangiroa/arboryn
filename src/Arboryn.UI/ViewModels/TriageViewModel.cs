@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Arboryn.Application.UseCases;
 using Arboryn.Domain.Triage;
 using Arboryn.Domain.ValueObjects;
+using Arboryn.UI.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -34,6 +35,7 @@ public sealed class TriageViewModel : INotifyPropertyChanged
     private readonly ApplyTriageHandler _apply;
     private readonly LearnTriagePatternsHandler _learn;
     private readonly UndoUniformizationHandler _undo;
+    private readonly ActiveVolumeContext _activeVolume;
     private readonly ILogger<TriageViewModel> _logger;
 
     private string _currentFolder = "(aucun dossier sélectionné)";
@@ -46,12 +48,14 @@ public sealed class TriageViewModel : INotifyPropertyChanged
         ApplyTriageHandler apply,
         LearnTriagePatternsHandler learn,
         UndoUniformizationHandler undo,
+        ActiveVolumeContext activeVolume,
         ILogger<TriageViewModel> logger)
     {
         _prepare = prepare;
         _apply = apply;
         _learn = learn;
         _undo = undo;
+        _activeVolume = activeVolume;
         _logger = logger;
     }
 
@@ -119,7 +123,7 @@ public sealed class TriageViewModel : INotifyPropertyChanged
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Arboryn", "thumbnails");
 
-            var result = await Task.Run(() => _prepare.ExecuteAsync(VolumeId.Default, root, thumbnailDir));
+            var result = await Task.Run(() => _prepare.ExecuteAsync(_activeVolume.Current, root, thumbnailDir));
 
             Rows.Clear();
             foreach (var candidate in result.Candidates)

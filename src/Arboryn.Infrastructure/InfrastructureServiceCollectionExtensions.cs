@@ -28,6 +28,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IPerceptualHashStore>(sp => sp.GetRequiredService<SqliteFileInstanceRepository>());
         services.AddSingleton<IAudioFingerprintStore>(sp => sp.GetRequiredService<SqliteFileInstanceRepository>());
         services.AddSingleton<ILogicalFileRepository, SqliteLogicalFileRepository>();
+        // Volumes (Inc 9) — dépôt + identification stable (VSN NTFS, empreinte SMB, marqueur .Arboryn).
+        services.AddSingleton<IVolumeRepository, SqliteVolumeRepository>();
+        services.AddSingleton<IVolumeIdentifier, WindowsVolumeIdentifier>();
         services.AddSingleton<IFileMetadataRepository, SqliteFileMetadataRepository>();
         services.AddSingleton<IOperationJournal, SqliteOperationJournal>();
         services.AddSingleton<IRecycleBin, RecycleBin>();

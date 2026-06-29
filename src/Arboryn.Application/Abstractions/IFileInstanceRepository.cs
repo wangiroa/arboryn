@@ -34,6 +34,14 @@ public interface IFileInstanceRepository
     /// <summary>Supprime toutes les FileInstances d'un volume (reset du catalogue).</summary>
     Task ClearVolumeAsync(VolumeId volumeId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Réaffecte au volume <paramref name="targetVolumeId"/> les instances du volume
+    /// « default » dont le chemin se trouve sous <paramref name="root"/> (Inc 9 : migration
+    /// des instances vers leur volume réel une fois celui-ci identifié). En Inc 1-8, le chemin
+    /// stocké est absolu, d'où le filtrage par préfixe. Renvoie le nombre d'instances migrées.
+    /// </summary>
+    Task<int> ReassignDefaultUnderRootAsync(FilePath root, VolumeId targetVolumeId, CancellationToken cancellationToken);
+
     /// <summary>Marque une instance comme supprimée (exclue de la détection).</summary>
     Task MarkDeletedAsync(FileInstanceId id, CancellationToken cancellationToken);
 

@@ -199,6 +199,9 @@ public sealed class SqliteFileInstanceRepository
     public Task MarkActiveAsync(FileInstanceId id, CancellationToken cancellationToken)
         => SetStatusAsync(id, "active", cancellationToken);
 
+    public Task MarkMissingAsync(FileInstanceId id, CancellationToken cancellationToken)
+        => SetStatusAsync(id, "missing", cancellationToken);
+
     private async Task SetStatusAsync(FileInstanceId id, string status, CancellationToken cancellationToken)
     {
         await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);

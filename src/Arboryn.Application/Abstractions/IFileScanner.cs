@@ -13,6 +13,13 @@ public interface IFileScanner
         FilePath rootPath,
         VolumeId volumeId,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Lit les métadonnées d'un seul fichier (taille, dates), ou <c>null</c> s'il est absent
+    /// ou inaccessible. Utilisé par le re-scan incrémental (Inc 9) pour traiter les chemins
+    /// signalés par le USN Journal sans réénumérer toute l'arborescence.
+    /// </summary>
+    ScannedFile? TryStat(FilePath path);
 }
 
 /// <summary>

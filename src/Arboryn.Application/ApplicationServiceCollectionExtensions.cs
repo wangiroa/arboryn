@@ -8,7 +8,9 @@ public static class ApplicationServiceCollectionExtensions
 {
     public static IServiceCollection AddArborynApplication(this IServiceCollection services)
     {
+        services.AddTransient<LogicalFileResolver>();
         services.AddTransient<ScanDirectoryHandler>();
+        services.AddTransient<RescanVolumeHandler>();
         services.AddTransient<DetectExactDuplicatesHandler>();
         services.AddTransient<DetectFuzzyDuplicatesHandler>();
         services.AddTransient<ClearCatalogHandler>();

@@ -30,7 +30,7 @@ public class ScanAndDetectTests
             metadata, new Arboryn.Application.Abstractions.IContentMetadataReader[] { new TagLibAudioMetadataReader() },
             NullLogger<Arboryn.Application.UseCases.ExtractMetadataHandler>.Instance);
         var scanner = new FileScanner(NullLogger<FileScanner>.Instance);
-        var scanHandler = new ScanDirectoryHandler(scanner, repository, logicalFiles, extractor, NullLogger<ScanDirectoryHandler>.Instance);
+        var scanHandler = new ScanDirectoryHandler(scanner, repository, logicalFiles, new LogicalFileResolver(logicalFiles), extractor, NullLogger<ScanDirectoryHandler>.Instance);
 
         var result = await scanHandler.ExecuteAsync(FilePath.From(temp.Path), VolumeId.Default);
         result.FilesProcessed.Should().Be(3);
@@ -69,7 +69,7 @@ public class ScanAndDetectTests
             metadata, new Arboryn.Application.Abstractions.IContentMetadataReader[] { new TagLibAudioMetadataReader() },
             NullLogger<Arboryn.Application.UseCases.ExtractMetadataHandler>.Instance);
         var scanner = new FileScanner(NullLogger<FileScanner>.Instance);
-        var scanHandler = new ScanDirectoryHandler(scanner, repository, logicalFiles, extractor, NullLogger<ScanDirectoryHandler>.Instance);
+        var scanHandler = new ScanDirectoryHandler(scanner, repository, logicalFiles, new LogicalFileResolver(logicalFiles), extractor, NullLogger<ScanDirectoryHandler>.Instance);
 
         var progress = new RecordingProgress();
 

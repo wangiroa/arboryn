@@ -77,7 +77,7 @@ public class PerceptualHashingTests
             metadata, Array.Empty<IContentMetadataReader>(), NullLogger<ExtractMetadataHandler>.Instance);
         var scanHandler = new ScanDirectoryHandler(
             new FileScanner(NullLogger<FileScanner>.Instance),
-            repository, logicalFiles, extractor, NullLogger<ScanDirectoryHandler>.Instance);
+            repository, logicalFiles, new LogicalFileResolver(logicalFiles), extractor, NullLogger<ScanDirectoryHandler>.Instance);
 
         await scanHandler.ExecuteAsync(FilePath.From(temp.Path), VolumeId.Default);
 

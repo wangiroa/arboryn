@@ -86,6 +86,9 @@ public sealed class FileScanner : IFileScanner
         _logger.LogInformation("Scan terminé : {Count} fichiers retenus sous {Root}", count, root);
     }
 
+    /// <summary>Lit les métadonnées d'un seul fichier (re-scan incrémental, Inc 9).</summary>
+    public ScannedFile? TryStat(FilePath path) => TryRead(path.Value);
+
     /// <summary>Inclut uniquement les fichiers normaux (ni reparse-point, ni système).</summary>
     private static bool IncludeFile(ref FileSystemEntry entry) =>
         !entry.IsDirectory &&

@@ -45,6 +45,13 @@ public interface IFileInstanceRepository
     /// <summary>Marque une instance comme supprimée (exclue de la détection).</summary>
     Task MarkDeletedAsync(FileInstanceId id, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Marque une instance comme « manquante » (Inc 9 : fichier absent lors d'un re-scan).
+    /// Distinct de <see cref="MarkDeletedAsync"/> : un fichier manquant peut réapparaître
+    /// (volume rebranché) et sera réactivé par le prochain upsert.
+    /// </summary>
+    Task MarkMissingAsync(FileInstanceId id, CancellationToken cancellationToken);
+
     /// <summary>Réactive une instance précédemment supprimée (undo).</summary>
     Task MarkActiveAsync(FileInstanceId id, CancellationToken cancellationToken);
 }

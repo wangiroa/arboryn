@@ -17,6 +17,7 @@ public sealed class ScanDirectoryHandler
     private readonly IFileScanner _scanner;
     private readonly IFileInstanceRepository _instanceRepository;
     private readonly ILogicalFileRepository _logicalFileRepository;
+    private readonly LogicalFileResolver _logicalFileResolver;
     private readonly ExtractMetadataHandler _metadataExtractor;
     private readonly ILogger<ScanDirectoryHandler> _logger;
 
@@ -24,12 +25,14 @@ public sealed class ScanDirectoryHandler
         IFileScanner scanner,
         IFileInstanceRepository instanceRepository,
         ILogicalFileRepository logicalFileRepository,
+        LogicalFileResolver logicalFileResolver,
         ExtractMetadataHandler metadataExtractor,
         ILogger<ScanDirectoryHandler> logger)
     {
         _scanner = scanner;
         _instanceRepository = instanceRepository;
         _logicalFileRepository = logicalFileRepository;
+        _logicalFileResolver = logicalFileResolver;
         _metadataExtractor = metadataExtractor;
         _logger = logger;
     }
@@ -55,7 +58,8 @@ public sealed class ScanDirectoryHandler
             var canonical = CanonicalName.From(file.Path.FileName);
             var signature = ContentSignature.NameSize(canonical, file.Size);
             var category = MediaClassifier.FromExtension(file.Path.Extension);
-            var logicalFileId = await ResolveAsync(signature, category, resolved, cancellationToken).ConfigureAwait(false);
+            var logicalFileId = await _logicalFileResolver
+                .ResolveAsync(signature, category, resolved, cancellationToken).ConfigureAwait(false);
 
             var record = new FileInstanceRecord(
                 FileInstanceId.New(),
@@ -90,40 +94,6 @@ public sealed class ScanDirectoryHandler
             "Indexation terminée : {Count} fichiers sur le volume {Volume} ; {LogicalFiles} LogicalFile(s) distincts",
             processed, volumeId, resolved.Count);
         return new ScanResult(processed);
-    }
-
-    private async Task<LogicalFileId> ResolveAsync(
-        ContentSignature signature,
-        MediaCategory category,
-        Dictionary<string, LogicalFileId> resolved,
-        CancellationToken cancellationToken)
-    {
-        if (resolved.TryGetValue(signature.Value, out var cached))
-        {
-            return cached;
-        }
-
-        var existing = await _logicalFileRepository
-            .FindBySignatureAsync(signature, cancellationToken).ConfigureAwait(false);
-
-        LogicalFileId id;
-        if (existing is not null)
-        {
-            id = existing.Id;
-        }
-        else
-        {
-            // Catégorie préliminaire déduite de l'extension (affinée plus tard par le
-            // contenu / le triage). Les instances partageant une signature partagent
-            // l'extension, donc la catégorie est cohérente.
-            var now = DateTime.UtcNow;
-            var logicalFile = new LogicalFile(LogicalFileId.New(), category, signature, now, now);
-            await _logicalFileRepository.UpsertAsync(logicalFile, cancellationToken).ConfigureAwait(false);
-            id = logicalFile.Id;
-        }
-
-        resolved[signature.Value] = id;
-        return id;
     }
 
     private const int ProgressEvery = 100;

@@ -28,7 +28,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private const string PreferDeeperKey = "prefer_deeper";
     private const string FuzzyThresholdKey = "fuzzy_threshold";
 
-    private readonly ScanDirectoryHandler _scanHandler;
+    private readonly RescanVolumeHandler _rescanHandler;
     private readonly DetectExactDuplicatesHandler _detectHandler;
     private readonly DetectFuzzyDuplicatesHandler _fuzzyHandler;
     private readonly ConfirmByHashHandler _hashHandler;
@@ -68,7 +68,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private MediaFilterOption _selectedMediaFilter;
 
     public MainViewModel(
-        ScanDirectoryHandler scanHandler,
+        RescanVolumeHandler rescanHandler,
         DetectExactDuplicatesHandler detectHandler,
         DetectFuzzyDuplicatesHandler fuzzyHandler,
         ConfirmByHashHandler hashHandler,
@@ -84,7 +84,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ISettingsRepository settings,
         ILogger<MainViewModel> logger)
     {
-        _scanHandler = scanHandler;
+        _rescanHandler = rescanHandler;
         _detectHandler = detectHandler;
         _fuzzyHandler = fuzzyHandler;
         _hashHandler = hashHandler;
@@ -736,7 +736,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
             var progress = new Progress<ScanProgress>(
                 p => StatusText = $"Indexation : {p.FilesProcessed} fichiers…");
 
-            await Task.Run(() => _scanHandler.ExecuteAsync(root, _activeVolume.Current, progress, token), token);
+            // Re-scan incrémental : USN Journal si disponible (NTFS, position connue), sinon
+            // parcours mtime complet. Détecte aussi les fichiers disparus (marqués « manquants »).
+            var rescan = await Task.Run(() => _rescanHandler.ExecuteAsync(root, enroll.Volume, progress, token), token);
+            _logger.LogInformation(
+                "Re-scan {Mode} : {Processed} indexé(s), {Missing} manquant(s).",
+                rescan.UsedUsnJournal ? "USN" : "mtime", rescan.Processed, rescan.Missing);
 
             // Enrichissement automatique post-scan, si activé (le handler respecte lui-même le
             // mode en ligne global/par-catégorie et le cache ; rien ne sort en mode local-only).

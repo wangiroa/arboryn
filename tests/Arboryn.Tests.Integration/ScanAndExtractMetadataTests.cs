@@ -40,7 +40,7 @@ public class ScanAndExtractMetadataTests
             NullLogger<ExtractMetadataHandler>.Instance);
         var scanHandler = new ScanDirectoryHandler(
             new FileScanner(NullLogger<FileScanner>.Instance),
-            instances, logicalFiles, extractor, NullLogger<ScanDirectoryHandler>.Instance);
+            instances, logicalFiles, new LogicalFileResolver(logicalFiles), extractor, NullLogger<ScanDirectoryHandler>.Instance);
 
         await scanHandler.ExecuteAsync(FilePath.From(temp.Path), VolumeId.Default);
 

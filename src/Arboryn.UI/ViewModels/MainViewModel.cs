@@ -41,6 +41,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly EnrichDirectoryHandler _enrichHandler;
     private readonly EnrollVolumeHandler _enrollHandler;
     private readonly ActiveVolumeContext _activeVolume;
+    private readonly IVolumeRepository _volumes;
     private readonly ISettingsRepository _settings;
     private readonly ILogger<MainViewModel> _logger;
 
@@ -67,6 +68,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private readonly List<DuplicateGroupItem> _allGroups = new();
     private MediaFilterOption _selectedMediaFilter;
 
+    // Sélecteur de volume source (Inc 9) : choisir le volume dont on inspecte les doublons.
+    private VolumeChoice? _selectedSourceVolume;
+    private bool _suspendVolumeSync;
+
     public MainViewModel(
         RescanVolumeHandler rescanHandler,
         DetectExactDuplicatesHandler detectHandler,
@@ -81,6 +86,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         EnrichDirectoryHandler enrichHandler,
         EnrollVolumeHandler enrollHandler,
         ActiveVolumeContext activeVolume,
+        IVolumeRepository volumes,
         ISettingsRepository settings,
         ILogger<MainViewModel> logger)
     {
@@ -97,6 +103,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _enrichHandler = enrichHandler;
         _enrollHandler = enrollHandler;
         _activeVolume = activeVolume;
+        _volumes = volumes;
         _settings = settings;
         _logger = logger;
         _selectedMediaFilter = MediaFilters[0];
@@ -198,6 +205,94 @@ public sealed class MainViewModel : INotifyPropertyChanged
             {
                 RebuildFilteredView();
             }
+        }
+    }
+
+    /// <summary>Volumes enrôlés sélectionnables comme source de doublons (Inc 9).</summary>
+    public ObservableCollection<VolumeChoice> SourceVolumes { get; } = new();
+
+    /// <summary>
+    /// Volume source dont on inspecte les doublons. Le choisir active ce volume et relance la
+    /// détection sur l'ensemble de son catalogue (sans re-scan). Les changements programmatiques
+    /// (sync avec le volume actif) ne déclenchent pas de détection.
+    /// </summary>
+    public VolumeChoice? SelectedSourceVolume
+    {
+        get => _selectedSourceVolume;
+        set
+        {
+            if (SetProperty(ref _selectedSourceVolume, value) && value is not null && !_suspendVolumeSync)
+            {
+                _ = SwitchSourceVolumeAsync(value);
+            }
+        }
+    }
+
+    /// <summary>Recharge la liste des volumes et y sélectionne le volume actif (sans détection).</summary>
+    public async Task LoadVolumesAsync()
+    {
+        try
+        {
+            var volumes = await _volumes.GetAllAsync(CancellationToken.None);
+            _suspendVolumeSync = true;
+            SourceVolumes.Clear();
+            foreach (var volume in volumes)
+            {
+                SourceVolumes.Add(new VolumeChoice(volume.Id, volume.Name));
+            }
+
+            SelectedSourceVolume = SourceVolumes.FirstOrDefault(v => v.Id == _activeVolume.Current)
+                                   ?? SourceVolumes.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Échec du chargement des volumes pour le filtre source");
+        }
+        finally
+        {
+            _suspendVolumeSync = false;
+        }
+    }
+
+    private async Task SwitchSourceVolumeAsync(VolumeChoice choice)
+    {
+        _activeVolume.Set(choice.Id, choice.Name);
+        await ViewActiveVolumeDuplicatesAsync();
+    }
+
+    /// <summary>Affiche les doublons de tout le catalogue du volume actif (sans re-scan).</summary>
+    private async Task ViewActiveVolumeDuplicatesAsync()
+    {
+        if (IsScanning || IsDeleting)
+        {
+            return;
+        }
+
+        IsScanning = true;
+        _allGroups.Clear();
+        RebuildFilteredView();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+        try
+        {
+            await DetectSelectedAsync(wholeCatalog: true, cancellationToken: token);
+            _pendingScanned = true;
+            OnPropertyChanged(nameof(ScanButtonLabel));
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText = "Détection annulée.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Échec de la détection sur le volume {Volume}", _activeVolume.CurrentName);
+            StatusText = $"Erreur : {ex.Message}";
+        }
+        finally
+        {
+            _cts.Dispose();
+            _cts = null;
+            IsScanning = false;
         }
     }
 
@@ -568,7 +663,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             var prefix = result.Failed == 0
                 ? $"{result.Restored} fichier(s) restauré(s). "
                 : $"{result.Restored} restauré(s), {result.Failed} échec(s). ";
-            await DetectSelectedAsync(prefix, token);
+            await DetectSelectedAsync(prefix, cancellationToken: token);
         }
         catch (OperationCanceledException)
         {
@@ -751,6 +846,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             _pendingScanned = true;
             OnPropertyChanged(nameof(ScanButtonLabel));
+
+            // Rafraîchit la liste des volumes source et y sélectionne le volume venant d'être scanné.
+            await LoadVolumesAsync();
         }
         catch (OperationCanceledException)
         {
@@ -806,9 +904,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     /// courante, reconstruit entièrement la liste des groupes, trie par espace récupérable décroissant
     /// et met à jour le statut (éventuellement préfixé par un message d'action, ex. restauration).
     /// </summary>
-    private async Task DetectSelectedAsync(string? prefix = null, CancellationToken cancellationToken = default)
+    private async Task DetectSelectedAsync(
+        string? prefix = null, bool wholeCatalog = false, CancellationToken cancellationToken = default)
     {
-        var underRoot = DetectWholeCatalog ? null : _lastRoot;
+        // wholeCatalog force le périmètre « tout le volume » (ex. sélection d'un volume source,
+        // où _lastRoot — issu d'un autre volume/scan — ne s'applique pas).
+        var underRoot = (wholeCatalog || DetectWholeCatalog) ? null : _lastRoot;
         var detected = new List<DuplicateGroupItem>();
         var parts = new List<string>();
 

@@ -138,6 +138,18 @@
                               VerticalAlignment="Center"
                               ToolTipService.ToolTip="Filtre les groupes par type de média. Les extensions ambiguës (PDF, JPG…) apparaissent sous plusieurs types — un PDF compte comme document, ebook et BD." />
                 </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="Volume source :"
+                               Style="{StaticResource ArborynCaptionText}"
+                               Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                               VerticalAlignment="Center" />
+                    <ComboBox MinWidth="180"
+                              ItemsSource="{x:Bind ViewModel.SourceVolumes, Mode=OneWay}"
+                              SelectedItem="{x:Bind ViewModel.SelectedSourceVolume, Mode=TwoWay}"
+                              DisplayMemberPath="Label"
+                              VerticalAlignment="Center"
+                              ToolTipService.ToolTip="Choisit le volume dont on inspecte les doublons. Le sélectionner relance la détection sur tout son catalogue, sans re-scan." />
+                </StackPanel>
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">

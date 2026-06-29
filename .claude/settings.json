@@ -84,7 +84,8 @@
       "PowerShell($exe = \"C:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\bin\\\\x64\\\\Debug\\\\net8.0-windows10.0.19041.0\\\\win-x64\\\\Arboryn.UI.exe\"; $p = Start-Process -FilePath $exe -PassThru; Start-Sleep -Seconds 6; if \\(-not $p.HasExited\\) { \"ALIVE pid=$\\($p.Id\\) — app démarrée sans crash\"; Stop-Process -Id $p.Id -Force } else { \"EXITED early code=$\\($p.ExitCode\\)\" })",
       "PowerShell(dotnet build C:\\\\dev\\\\arboryn\\\\tests\\\\Arboryn.Tests.Integration\\\\Arboryn.Tests.Integration.csproj -c Debug -v q 2>&1)",
       "PowerShell(dotnet test C:\\\\dev\\\\arboryn\\\\tests\\\\Arboryn.Tests.Integration\\\\Arboryn.Tests.Integration.csproj -c Debug --filter \"FullyQualifiedName~RescanVolumeTests\" 2>&1)",
-      "PowerShell($exe = \"C:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\bin\\\\x64\\\\Debug\\\\net8.0-windows10.0.19041.0\\\\win-x64\\\\Arboryn.UI.exe\"; $p = Start-Process -FilePath $exe -PassThru; Start-Sleep -Seconds 6; if \\(-not $p.HasExited\\) { \"ALIVE pid=$\\($p.Id\\) — démarrage OK\"; Stop-Process -Id $p.Id -Force } else { \"EXITED early code=$\\($p.ExitCode\\)\" })"
+      "PowerShell($exe = \"C:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\bin\\\\x64\\\\Debug\\\\net8.0-windows10.0.19041.0\\\\win-x64\\\\Arboryn.UI.exe\"; $p = Start-Process -FilePath $exe -PassThru; Start-Sleep -Seconds 6; if \\(-not $p.HasExited\\) { \"ALIVE pid=$\\($p.Id\\) — démarrage OK\"; Stop-Process -Id $p.Id -Force } else { \"EXITED early code=$\\($p.ExitCode\\)\" })",
+      "PowerShell(dotnet test C:\\\\dev\\\\arboryn\\\\tests\\\\Arboryn.Tests.Integration\\\\Arboryn.Tests.Integration.csproj -c Debug --filter \"FullyQualifiedName~ScanResilienceTests\" 2>&1)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Dominique\\.claude\\projects\\c--dev-arboryn\\memory"

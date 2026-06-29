@@ -23,7 +23,7 @@ public sealed partial class DuplicatesPage : Page
         InitializeComponent();
     }
 
-    protected override void OnNavigatedTo(NavigationEventArgs e)
+    protected override async void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
         if (e.Parameter is IServiceProvider services)
@@ -33,6 +33,8 @@ public sealed partial class DuplicatesPage : Page
             this.DataContext = ViewModel;
             ViewModel.PropertyChanged += OnVmChanged;
             UpdateSummary();
+            // Charge la liste des volumes source et y reflète le volume actif (sans détection).
+            await ViewModel.LoadVolumesAsync();
         }
     }
 

@@ -40,8 +40,13 @@ public sealed class FileScanner : IFileScanner
     };
 
     private readonly ILogger<FileScanner> _logger;
+    private readonly ScanResilienceOptions _resilience;
 
-    public FileScanner(ILogger<FileScanner> logger) => _logger = logger;
+    public FileScanner(ILogger<FileScanner> logger, ScanResilienceOptions? resilience = null)
+    {
+        _logger = logger;
+        _resilience = resilience ?? ScanResilienceOptions.Default;
+    }
 
     public async IAsyncEnumerable<ScannedFile> ScanAsync(
         FilePath rootPath,
@@ -115,26 +120,32 @@ public sealed class FileScanner : IFileScanner
     }
 
     /// <summary>
-    /// Lit les métadonnées d'un fichier. Retourne <c>null</c> et journalise si le
-    /// fichier est devenu inaccessible entre l'énumération et la lecture (verrou,
-    /// suppression concurrente, permissions).
+    /// Lit les métadonnées d'un fichier. Retourne <c>null</c> et journalise si le fichier
+    /// est devenu inaccessible (verrou, suppression concurrente, permissions). Sur chemin
+    /// réseau (UNC), les erreurs transitoires sont ré-essayées avec back-off exponentiel
+    /// avant d'abandonner le fichier.
     /// </summary>
     private ScannedFile? TryRead(string fullPath)
     {
+        var resilient = fullPath.StartsWith(@"\\", StringComparison.Ordinal);
         try
         {
-            var info = new FileInfo(fullPath);
-
-            return new ScannedFile(
-                FilePath.From(fullPath),
-                info.Length,
-                info.LastWriteTimeUtc,
-                info.CreationTimeUtc);
+            return ScanResilience.Execute(() => ReadInfo(fullPath), resilient, _resilience, _logger, fullPath);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger.LogDebug(ex, "Fichier ignoré (inaccessible) : {Path}", fullPath);
             return null;
         }
+    }
+
+    private static ScannedFile ReadInfo(string fullPath)
+    {
+        var info = new FileInfo(fullPath);
+        return new ScannedFile(
+            FilePath.From(fullPath),
+            info.Length,
+            info.LastWriteTimeUtc,
+            info.CreationTimeUtc);
     }
 }

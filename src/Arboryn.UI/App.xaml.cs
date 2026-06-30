@@ -43,6 +43,11 @@ public partial class App : Microsoft.UI.Xaml.Application
         var keyring = Host.Services.GetRequiredService<Application.Abstractions.IEnrichmentKeyring>();
         await keyring.RefreshAsync(CancellationToken.None).ConfigureAwait(true);
 
+        // Restaure le dernier volume actif (Inc 9), s'il existe encore en base.
+        var activeVolume = Host.Services.GetRequiredService<Services.ActiveVolumeContext>();
+        var volumeRepository = Host.Services.GetRequiredService<Application.Abstractions.IVolumeRepository>();
+        await activeVolume.InitializeAsync(volumeRepository).ConfigureAwait(true);
+
         // Chargement des préférences (répertoires prioritaires) avant l'affichage.
         var viewModel = Host.Services.GetRequiredService<ViewModels.MainViewModel>();
         await viewModel.LoadSettingsAsync().ConfigureAwait(true);

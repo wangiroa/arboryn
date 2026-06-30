@@ -132,6 +132,49 @@ public sealed class VolumesViewModel : INotifyPropertyChanged
         StatusText = $"Volume actif : « {item.Name} ».";
     }
 
+    /// <summary>
+    /// Renomme un volume (nom convivial). La base fait foi pour un volume enrôlé ; le marqueur
+    /// <c>.Arboryn</c> n'est mis à jour qu'au prochain enrôlement, donc le renommage fonctionne
+    /// aussi hors-ligne. Si le volume renommé est actif, son libellé est synchronisé.
+    /// </summary>
+    public async Task RenameAsync(VolumeRowItem item, string newName, CancellationToken cancellationToken = default)
+    {
+        var trimmed = newName?.Trim();
+        if (IsBusy || string.IsNullOrWhiteSpace(trimmed) || string.Equals(trimmed, item.Name, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var record = await _volumes.GetAsync(item.Id, cancellationToken).ConfigureAwait(true);
+            if (record is null)
+            {
+                StatusText = "Volume introuvable.";
+                return;
+            }
+
+            await _volumes.UpsertAsync(record with { Name = trimmed }, cancellationToken).ConfigureAwait(true);
+            if (item.Id == _activeVolume.Current)
+            {
+                _activeVolume.Set(item.Id, trimmed);
+            }
+
+            StatusText = $"Volume renommé en « {trimmed} ».";
+            await LoadAsync(cancellationToken).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Échec du renommage du volume {Volume}", item.Id.Value);
+            StatusText = $"Erreur : {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     private void RefreshActiveFlags()
     {
         foreach (var row in Volumes)

@@ -57,4 +57,33 @@ public sealed partial class VolumesPage : Page
             ViewModel.SetActive(row);
         }
     }
+
+    private async void OnRenameClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: VolumeRowItem row })
+        {
+            return;
+        }
+
+        var input = new TextBox
+        {
+            Text = row.Name,
+            SelectionStart = row.Name.Length,
+            PlaceholderText = "Nom du volume",
+        };
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = "Renommer le volume",
+            Content = input,
+            PrimaryButtonText = "Renommer",
+            CloseButtonText = "Annuler",
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            await ViewModel.RenameAsync(row, input.Text);
+        }
+    }
 }

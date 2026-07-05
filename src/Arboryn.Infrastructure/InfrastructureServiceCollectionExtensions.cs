@@ -19,6 +19,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton(new DatabaseFactory(connectionString));
         services.AddSingleton(sp => new Migrator(
             connectionString, sp.GetRequiredService<ILogger<Migrator>>()));
+        // Partage sûr du catalogue (Inc 13, A2) — Export/Import via l'API SQLite Online Backup.
+        // Dépend de DatabaseLocationInfo, enregistré par le composition root (AppHostBuilder).
+        services.AddSingleton<ICatalogTransfer, Database.SqliteCatalogTransfer>();
         services.AddSingleton<IFileScanner, FileScanner>();
         // Une seule instance partagée pour les deux interfaces du dépôt.
         services.AddSingleton<SqliteFileInstanceRepository>();

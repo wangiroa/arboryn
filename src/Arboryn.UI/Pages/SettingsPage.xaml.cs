@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Arboryn.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -17,6 +19,8 @@ public sealed partial class SettingsPage : Page
 
     public EnrichmentViewModel Enrichment { get; private set; } = null!;
 
+    public DatabaseSettingsViewModel Database { get; private set; } = null!;
+
     public SettingsPage()
     {
         InitializeComponent();
@@ -29,8 +33,90 @@ public sealed partial class SettingsPage : Page
         {
             ViewModel = services.GetRequiredService<MainViewModel>();
             Enrichment = services.GetRequiredService<EnrichmentViewModel>();
+            Database = services.GetRequiredService<DatabaseSettingsViewModel>();
             this.DataContext = ViewModel;
             await Enrichment.LoadAsync();
+        }
+    }
+
+    private async void OnChooseDbLocationClick(object sender, RoutedEventArgs e)
+    {
+        var picker = new FolderPicker { SuggestedStartLocation = PickerLocationId.ComputerFolder };
+        picker.FileTypeFilter.Add("*");
+        var window = (Microsoft.UI.Xaml.Application.Current as App)?.RootShell;
+        if (window is null)
+        {
+            return;
+        }
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder is not null)
+        {
+            Database.ChooseLocation(folder.Path);
+            await PromptRestartAsync();
+        }
+    }
+
+    private async void OnResetDbLocationClick(object sender, RoutedEventArgs e)
+    {
+        Database.ResetToDefault();
+        await PromptRestartAsync();
+    }
+
+    private async void OnExportDbClick(object sender, RoutedEventArgs e)
+    {
+        var picker = new FileSavePicker
+        {
+            SuggestedStartLocation = PickerLocationId.ComputerFolder,
+            SuggestedFileName = "arboryn-index",
+        };
+        picker.FileTypeChoices.Add("Base Arboryn", new List<string> { ".db" });
+        var window = (Microsoft.UI.Xaml.Application.Current as App)?.RootShell;
+        if (window is null)
+        {
+            return;
+        }
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
+        var file = await picker.PickSaveFileAsync();
+        if (file is not null)
+        {
+            await Database.ExportAsync(file.Path);
+        }
+    }
+
+    private async void OnImportDbClick(object sender, RoutedEventArgs e)
+    {
+        var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.ComputerFolder };
+        picker.FileTypeFilter.Add(".db");
+        var window = (Microsoft.UI.Xaml.Application.Current as App)?.RootShell;
+        if (window is null)
+        {
+            return;
+        }
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(window));
+        var file = await picker.PickSingleFileAsync();
+        if (file is not null)
+        {
+            Database.ScheduleImport(file.Path);
+            await PromptRestartAsync();
+        }
+    }
+
+    /// <summary>Propose de fermer Arboryn pour appliquer un changement d'emplacement/import de base.</summary>
+    private async Task PromptRestartAsync()
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = "Redémarrage requis",
+            Content = "Ce changement prend effet au prochain démarrage. Fermer Arboryn maintenant ?",
+            PrimaryButtonText = "Fermer maintenant",
+            CloseButtonText = "Plus tard",
+            DefaultButton = ContentDialogButton.Close,
+        };
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            Microsoft.UI.Xaml.Application.Current.Exit();
         }
     }
 

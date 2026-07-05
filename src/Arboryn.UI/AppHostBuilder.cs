@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using Arboryn.Application;
 using Arboryn.Infrastructure;
+using Arboryn.Infrastructure.Database;
 using Arboryn.UI.ViewModels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,25 +17,54 @@ namespace Arboryn.UI;
 /// </summary>
 internal static class AppHostBuilder
 {
-    public static IHost Build()
+    /// <summary>
+    /// Résout l'emplacement de la base (Inc 13, A2) et initialise le logging. Appelé en tout
+    /// premier par <see cref="App"/>, avant l'acquisition du verrou d'écriture et l'application
+    /// d'un éventuel import différé — donc avant toute ouverture de connexion.
+    /// </summary>
+    public static DatabaseLocationInfo ResolveLocation()
     {
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var ArborynDir = Path.Combine(localAppData, "Arboryn");
-        Directory.CreateDirectory(ArborynDir);
-        Directory.CreateDirectory(Path.Combine(ArborynDir, "logs"));
-
-        var dbPath = Path.Combine(ArborynDir, "index.db");
-        var connectionString = $"Data Source={dbPath};Cache=Shared";
+        var arborynDir = Path.Combine(localAppData, "Arboryn");
+        Directory.CreateDirectory(arborynDir);
+        Directory.CreateDirectory(Path.Combine(arborynDir, "logs"));
 
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
             .Enrich.FromLogContext()
             .WriteTo.Console()
             .WriteTo.File(
-                Path.Combine(ArborynDir, "logs", "Arboryn-.log"),
+                Path.Combine(arborynDir, "logs", "Arboryn-.log"),
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 14)
             .CreateLogger();
+
+        // Config minimale pour lire les clés Database:* (le host reconstruit sa propre config).
+        var config = new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: false)
+            .Build();
+
+        var dbPath = DatabaseLocation.Resolve(
+            localAppData,
+            Environment.GetEnvironmentVariable(DatabaseLocation.EnvVariable),
+            DatabaseLocation.ReadPointer(arborynDir),
+            config["Database:FullPath"],
+            config["Database:PathRelativeToLocalAppData"]);
+
+        var dbDir = Path.GetDirectoryName(dbPath);
+        if (!string.IsNullOrEmpty(dbDir))
+        {
+            Directory.CreateDirectory(dbDir);
+        }
+
+        Log.Information("Base de données Arboryn : {DbPath}", dbPath);
+        return new DatabaseLocationInfo(arborynDir, dbPath);
+    }
+
+    public static IHost Build(DatabaseLocationInfo location)
+    {
+        var connectionString = $"Data Source={location.DatabasePath};Cache=Shared";
 
         return Host.CreateDefaultBuilder()
             .UseSerilog()
@@ -47,6 +77,10 @@ internal static class AppHostBuilder
             {
                 services.AddArborynInfrastructure(connectionString);
                 services.AddArborynApplication();
+
+                // Emplacement résolu de la base (Inc 13, A2) — consommé par SqliteCatalogTransfer
+                // et l'UI Réglages.
+                services.AddSingleton(location);
 
                 // Volume actif partagé (Inc 9) — lu par tous les VMs, défini par le scan / la page Volumes.
                 services.AddSingleton<Services.ActiveVolumeContext>();
@@ -63,6 +97,7 @@ internal static class AppHostBuilder
                 services.AddSingleton<EnrichmentReviewViewModel>();
                 services.AddSingleton<ReplicationScopesViewModel>();
                 services.AddSingleton<PlacementReviewViewModel>();
+                services.AddSingleton<DatabaseSettingsViewModel>();
 
                 // Shell — instancié une fois, reçoit le ServiceProvider pour résoudre les pages enfants.
                 services.AddSingleton<MainWindow>(sp => new MainWindow(sp));

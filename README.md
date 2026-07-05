@@ -4,14 +4,17 @@ Système personnel de gestion et d'uniformisation de bibliothèque média multi-
 
 ## Statut
 
-Incrément 0 — squelette de solution prêt à builder. Voir [`CLAUDE.md`](./CLAUDE.md) pour le brief architectural complet et la roadmap.
+En développement actif (catalogue logique, uniformisation, triage, enrichissement, multi-volume,
+réplication, dashboard, déploiement multi-PC & packaging). Voir [`CLAUDE.md`](./CLAUDE.md) pour le
+brief architectural complet et la roadmap par incréments.
 
 ## Prérequis
 
 - Windows 11 22H2 ou plus récent
 - .NET 8 SDK
 - Windows App SDK 1.5+
-- Visual Studio 2022 17.8+ (avec charge de travail « Développement Windows »)
+- Visual Studio 2022 17.8+ (charge de travail « Développement Windows » ; ajouter les outils de
+  packaging MSIX pour construire l'installeur signé)
 
 ## Build et test
 
@@ -44,6 +47,48 @@ dotnet build src/Arboryn.UI/Arboryn.UI.csproj -c Debug -r win-x64 /p:Platform=x6
 > relancer : un simple `dotnet build` ne met pas à jour l'exe lancé, et l'application
 > continuerait de tourner sur d'anciens binaires.
 
+## Distribuer l'application (packaging)
+
+Pour déployer Arboryn ailleurs sans passer par la ligne de commande, deux formats (Inc 13).
+
+### Artefact portable auto-contenu
+
+`dotnet publish` en self-contained produit un dossier lançable **sans runtime .NET ni Windows App
+SDK préinstallés** (un RID + une plateforme restent obligatoires) :
+
+```powershell
+dotnet publish src/Arboryn.UI/Arboryn.UI.csproj -c Release -r win-x64 --self-contained true `
+  -p:Platform=x64 -p:PublishReadyToRun=true -o artifacts/win-x64
+# → artifacts/win-x64/Arboryn.UI.exe (double-cliquable)
+```
+
+(variante `-r win-arm64 -p:Platform=arm64`). La CI [`release.yml`](.github/workflows/release.yml)
+produit ces ZIP par architecture sur un tag `v*`.
+
+### Installeur MSIX signé
+
+[`packaging/build-msix.ps1`](packaging/build-msix.ps1) construit un MSIX auto-contenu et le signe
+avec un certificat auto-signé « CN=Arboryn » (créé au besoin). Nécessite Visual Studio avec la
+charge de travail de packaging desktop.
+
+```powershell
+pwsh packaging/build-msix.ps1 -Rid win-x64
+```
+
+Le build/CI par défaut restent inchangés : le packaging n'est activé que par
+`/p:ArborynPackage=true` (l'app reste `WindowsPackageType=None` sinon). Sur le poste cible, un MSIX
+auto-signé exige une étape unique (PowerShell **administrateur**) :
+
+```powershell
+packaging/Install-Arboryn.ps1 -PackagePath Arboryn_0.13.0.0_x64.msix -CertPath Arboryn.cer
+```
+
+Avec un vrai certificat commercial (roadmap « Futur »), l'import du `.cer` devient inutile.
+
+> ⚠️ Sous identité MSIX, `%LOCALAPPDATA%` est **redirigé** vers
+> `…\Packages\<PackageFamilyName>\LocalCache`. Épinglez l'emplacement de la base via
+> `ARBORYN_DB_PATH` ou les Réglages pour qu'il soit indépendant du packaging.
+
 ## Structure
 
 ```
@@ -69,7 +114,18 @@ Arboryn/
 
 ## Base de données
 
-SQLite stocké dans `%LOCALAPPDATA%\Arboryn\index.db`. Le schéma est appliqué automatiquement au démarrage via le `Migrator`. Voir `src/Arboryn.Infrastructure/Database/Migrations/001_InitialSchema.sql`.
+SQLite, par défaut `%LOCALAPPDATA%\Arboryn\index.db`. L'emplacement est **configurable** (Inc 13)
+pour partager le catalogue entre plusieurs PC (clé USB, dossier partagé), par ordre de priorité :
+
+1. variable d'environnement `ARBORYN_DB_PATH` ;
+2. choix via **Réglages → Emplacement de la base** (pointeur par-machine `db-location.json`) ;
+3. `Database:FullPath`, puis `Database:PathRelativeToLocalAppData` dans `appsettings.json` ;
+4. défaut `%LOCALAPPDATA%\Arboryn\index.db`.
+
+Le partage se fait par **Export / Import sûrs** (copie cohérente via l'API SQLite Online Backup) :
+n'ouvrez jamais la base en direct depuis deux PC à la fois, ni pendant une synchronisation cloud.
+Un verrou mono-écrivain (`{base}.lock`) empêche deux instances/PC d'écrire simultanément. Le schéma
+est appliqué au démarrage par le `Migrator` (voir `src/Arboryn.Infrastructure/Database/Migrations/`).
 
 ## Logs
 

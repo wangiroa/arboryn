@@ -9,7 +9,11 @@
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
-    <WindowsPackageType>None</WindowsPackageType>
+    <!-- Packaging MSIX opt-in (Inc 13, B) : build/dev/CI par défaut = None (exe portable,
+         lançable sans installation). Un build « msbuild /p:ArborynPackage=true » bascule en
+         MSIX (packagé, signé) sans changer le comportement par défaut. -->
+    <WindowsPackageType Condition="'$(ArborynPackage)' != 'true'">None</WindowsPackageType>
+    <WindowsPackageType Condition="'$(ArborynPackage)' == 'true'">MSIX</WindowsPackageType>
     <!-- App non packagée : embarque le runtime Windows App SDK pour un exe portable
          qui démarre sans installation préalable du Windows App Runtime. -->
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
@@ -17,6 +21,10 @@
     <NoWarn>$(NoWarn);NETSDK1206</NoWarn>
     <Nullable>enable</Nullable>
     <ApplicationIcon>Assets\Arboryn.ico</ApplicationIcon>
+    <!-- Version du produit (Inc 13, B) — à garder synchronisée avec Package.appxmanifest. -->
+    <Version>0.13.0</Version>
+    <FileVersion>0.13.0.0</FileVersion>
+    <AssemblyVersion>0.13.0.0</AssemblyVersion>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Arboryn.Domain\Arboryn.Domain.csproj" />
@@ -46,5 +54,25 @@
     <None Include="Assets\generate-app-icon.ps1">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
+    <Content Remove="Assets\generate-msix-assets.ps1" />
+    <None Include="Assets\generate-msix-assets.ps1">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+
+    <!-- Assets visuels MSIX (Inc 13, B) — régénérables via Assets\generate-msix-assets.ps1. -->
+    <Content Include="Assets\Square44x44Logo.png" />
+    <Content Include="Assets\Square71x71Logo.png" />
+    <Content Include="Assets\Square150x150Logo.png" />
+    <Content Include="Assets\Square310x310Logo.png" />
+    <Content Include="Assets\Wide310x150Logo.png" />
+    <Content Include="Assets\StoreLogo.png" />
+    <Content Include="Assets\SplashScreen.png" />
+  </ItemGroup>
+
+  <!-- Manifeste MSIX : inclus uniquement lors d'un build packagé (build/dev/CI inchangés). -->
+  <ItemGroup Condition="'$(ArborynPackage)' == 'true'">
+    <AppxManifest Include="Package.appxmanifest">
+      <SubType>Designer</SubType>
+    </AppxManifest>
   </ItemGroup>
 </Project>

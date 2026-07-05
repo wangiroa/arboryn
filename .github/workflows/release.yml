@@ -1,0 +1,53 @@
+# Publie les artefacts de déploiement d'Arboryn sur un tag « v* » (Inc 13, tranche B).
+# Produit un ZIP self-contained par architecture (embarque .NET + Windows App SDK → lançable
+# sans installation préalable). Le build/test habituel reste dans build.yml, inchangé.
+#
+# Le MSIX signé se construit localement via packaging/build-msix.ps1 (certificat requis) ; un job
+# MSIX en CI serait additif, gardé derrière un secret de certificat (.pfx) — non inclus ici.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - rid: win-x64
+            platform: x64
+          - rid: win-arm64
+            platform: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish (self-contained)
+        run: >
+          dotnet publish src/Arboryn.UI/Arboryn.UI.csproj
+          -c Release -r ${{ matrix.rid }} --self-contained true
+          -p:Platform=${{ matrix.platform }} -p:PublishReadyToRun=true
+          -o artifacts/${{ matrix.rid }}
+
+      - name: Zip
+        run: Compress-Archive -Path artifacts/${{ matrix.rid }}/* -DestinationPath Arboryn-${{ github.ref_name }}-${{ matrix.rid }}.zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Arboryn-${{ matrix.rid }}
+          path: Arboryn-*.zip
+
+      - name: Attach to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Arboryn-*.zip

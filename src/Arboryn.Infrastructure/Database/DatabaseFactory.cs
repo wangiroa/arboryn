@@ -26,6 +26,9 @@ public sealed class DatabaseFactory
         await connection.ExecuteAsync("PRAGMA journal_mode = WAL;").ConfigureAwait(false);
         await connection.ExecuteAsync("PRAGMA synchronous = NORMAL;").ConfigureAwait(false);
         await connection.ExecuteAsync("PRAGMA temp_store = MEMORY;").ConfigureAwait(false);
+        // Encaisse un checkpoint WAL ou une micro-latence réseau (base sur clé USB / partage)
+        // sans échouer immédiatement sur « database is locked » (Inc 13, A2).
+        await connection.ExecuteAsync("PRAGMA busy_timeout = 5000;").ConfigureAwait(false);
 
         return connection;
     }

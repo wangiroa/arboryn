@@ -29,6 +29,7 @@ public sealed class Migrator
         await connection.ExecuteAsync("PRAGMA foreign_keys = ON;").ConfigureAwait(false);
         await connection.ExecuteAsync("PRAGMA journal_mode = WAL;").ConfigureAwait(false);
         await connection.ExecuteAsync("PRAGMA synchronous = NORMAL;").ConfigureAwait(false);
+        await connection.ExecuteAsync("PRAGMA busy_timeout = 5000;").ConfigureAwait(false);
 
         await connection.ExecuteAsync(@"
             CREATE TABLE IF NOT EXISTS schema_versions (

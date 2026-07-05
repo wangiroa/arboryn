@@ -15,6 +15,9 @@ internal sealed class TestDatabase : IAsyncDisposable
 
     public DatabaseFactory Factory { get; }
 
+    /// <summary>Chemin du fichier de base jetable (utile pour tester export/import).</summary>
+    public string DatabasePath => _dbPath;
+
     private TestDatabase(string dbPath, string connectionString)
     {
         _dbPath = dbPath;

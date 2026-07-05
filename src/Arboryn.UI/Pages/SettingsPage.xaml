@@ -392,14 +392,55 @@
                                    Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
                     </StackPanel>
 
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Emplacement de la base de données"
-                                   Style="{StaticResource ArborynBodyStrongText}"
-                                   Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                        <TextBlock Text="%LOCALAPPDATA%\Arboryn\index.db"
-                                   FontFamily="{StaticResource ArborynMonoFontFamily}"
+                    <StackPanel Spacing="8">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Emplacement de la base de données"
+                                       Style="{StaticResource ArborynBodyStrongText}"
+                                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                            <TextBlock Text="Placez la base sur une clé USB ou un dossier partagé pour la transporter d'un PC à l'autre. Le partage se fait par Export/Import sûrs — n'ouvrez jamais la base en direct depuis deux PC à la fois."
+                                       Style="{StaticResource ArborynCaptionText}"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
+                            <TextBlock Text="{x:Bind Database.DatabasePath, Mode=OneWay}"
+                                       FontFamily="{StaticResource ArborynMonoFontFamily}"
+                                       Style="{StaticResource ArborynCaptionText}"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                                       IsTextSelectionEnabled="True" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <InfoBar IsOpen="{x:Bind Database.IsRiskyLocation, Mode=OneWay}"
+                                 IsClosable="False" Severity="Warning"
+                                 Title="Emplacement synchronisé / réseau / amovible"
+                                 Message="Fermez Arboryn avant toute synchronisation cloud, et n'ouvrez pas la base depuis deux PC simultanément — risque de corruption." />
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Click="OnChooseDbLocationClick">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                              Glyph="&#xE8DA;" FontSize="12" />
+                                    <TextBlock Text="Choisir un emplacement…" />
+                                </StackPanel>
+                            </Button>
+                            <Button Content="Réinitialiser (local)" Click="OnResetDbLocationClick" />
+                            <Button Click="OnExportDbClick">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                              Glyph="&#xEDE1;" FontSize="12" />
+                                    <TextBlock Text="Exporter…" />
+                                </StackPanel>
+                            </Button>
+                            <Button Click="OnImportDbClick">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                              Glyph="&#xE896;" FontSize="12" />
+                                    <TextBlock Text="Importer…" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <TextBlock Text="{x:Bind Database.StatusText, Mode=OneWay}"
                                    Style="{StaticResource ArborynCaptionText}"
-                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                   Foreground="{ThemeResource ArborynAccentTextBrush}"
+                                   TextWrapping="Wrap" />
                     </StackPanel>
 
                     <StackPanel Spacing="4">

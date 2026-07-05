@@ -77,12 +77,16 @@ public sealed class SqliteInventoryReader : IInventoryReader
             return System.Array.Empty<CrossVolumeSearchHit>();
         }
 
+        // Le nom de volume est suffixé de la machine propriétaire (Inc 13) — « C: — ALICE-PC »
+        // — quand elle est connue ; NAS / volume « default » / non attribué restent sans suffixe.
         const string sql = """
             SELECT fi.logical_file_id AS LogicalFileId, lf.category AS Category,
-                   fi.relative_path AS RelativePath, v.name AS VolumeName
+                   fi.relative_path AS RelativePath,
+                   v.name || COALESCE(' — ' || m.name, '') AS VolumeName
             FROM file_instances fi
             JOIN logical_files lf ON lf.id = fi.logical_file_id
             JOIN volumes v ON v.id = fi.volume_id
+            LEFT JOIN machines m ON m.id = v.machine_id
             WHERE fi.status = 'active'
               AND (fi.canonical_name LIKE @Pattern ESCAPE '\' OR fi.relative_path LIKE @Pattern ESCAPE '\')
             ORDER BY fi.logical_file_id, v.name

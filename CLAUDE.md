@@ -724,18 +724,84 @@ FK obligatoire) pour éviter tout refactor au moment du passage multi-volume.
 
 ---
 
+### Increment 13 — Déploiement multi-PC & packaging MSIX
+
+**Objectif** : Rendre le catalogue partageable entre plusieurs PC (une base SQLite
+unique transportée ou déposée sur un espace partagé), en identifiant sans ambiguïté le
+PC propriétaire de chaque volume ; et transformer l'app — aujourd'hui lançable seulement
+en ligne de commande via un build RID-spécifique — en produit installable (MSIX signé).
+
+**Note de séquencement** : trois tranches livrables indépendamment, dans l'ordre
+A1 → A2 → B. A1 pose l'identité machine (changement de modèle de données à faire tôt),
+A2 rend l'emplacement de la base configurable et le partage sûr, B produit l'installeur.
+Concrétise deux points de la section « Futur — Préparation à la distribution » (packaging
+MSIX ; multi-PC). Rappel : les disques internes sont déjà distingués par leur Volume
+Serial Number NTFS — l'identité machine sert à *nommer* le PC propriétaire, pas à éviter
+une collision.
+
+**Scope** :
+
+*A1 — Identité machine* :
+- Table `machines` (id, name éditable, hostname, first/last_seen) + FK nullable
+  `volumes.machine_id` (migration 003 ; NAS = `machine_id NULL`, agnostique).
+- Port `ILocalMachineProvider` (Infra : `Environment.MachineName`) + `IMachineRepository`.
+- Estampillage dans `EnrollVolumeHandler` : interne lié à son PC ; externe « premier
+  propriétaire collant » (ne flippe pas à chaque branchement) ; NAS null. Attribution
+  paresseuse au prochain enrôlement — pas de backfill (le volume `default` reste null).
+- Affichage « C: — ALICE-PC » (page Volumes, recherche cross-volume, filtres
+  volume-source, matrice Dashboard).
+
+*A2 — Base configurable & partage sûr* :
+- Résolution du chemin DB par précédence (env `ARBORYN_DB_PATH` > pointeur par-machine
+  `db-location.json` > `Database:FullPath` > `Database:PathRelativeToLocalAppData` >
+  défaut LOCALAPPDATA), `PRAGMA busy_timeout=5000`, garde mono-écrivain (verrou
+  `{dbPath}.lock`).
+- Base de travail **toujours locale** ; partage via Export/Import sûr (API SQLite Online
+  Backup), jamais d'ouverture directe sur cloud/SMB. UI Réglages « Emplacement de la
+  base » + Exporter/Importer + first-run.
+
+*B — Packaging MSIX* :
+- Projet `.wapproj` + `Package.appxmanifest` (garde `Arboryn.UI` en
+  `WindowsPackageType=None` → build/CI/lancement dev inchangés). Publish self-contained
+  (RID + Platform, sans single-file/trim).
+- Cert auto-signé + scripts `build-msix.ps1` / `Install-Arboryn.ps1` (import du `.cer`
+  dans TrustedPeople). Versioning csproj/manifest synchronisés. Caveat redirection
+  LOCALAPPDATA sous identité MSIX neutralisé par le chemin configurable A2.
+- CI : `release.yml` sur tag `v*` (zips self-contained par RID ; job MSIX gardé derrière
+  un secret cert). README + `tools/` (fpcalc/ffmpeg pinnés SHA-256, dégradation gracieuse
+  si absents).
+
+**Hors scope** : accès simultané multi-PC en écriture (verrou distribué), sync automatique
+continue, vrai certificat de signature commercial, publication Microsoft Store.
+
+**Critères** :
+- Une base scannée sur PC-A puis ouverte sur PC-B affiche les volumes étiquetés par PC ;
+  le `C:` de chaque PC est distinct et nommé.
+- Export → Import d'une base entre deux emplacements sans perte ni corruption ;
+  `schema_versions` préservé.
+- `Arboryn.UI.exe` (publish self-contained) démarre sur une machine sans WindowsAppRuntime
+  ni runtime .NET ; le MSIX auto-signé s'installe après import du cert et lance l'app ;
+  DB/logs au bon emplacement.
+- `dotnet build` / `dotnet test` (sans RID) et la CI existante restent verts.
+
+**Effort** : L
+
+---
+
 ### Futur — Préparation à la distribution
 
 À planifier après stabilisation de l'usage personnel :
 
 - Snapshot mode avec pré-check d'espace
-- Packaging MSIX + signature
+- Packaging MSIX signé avec **vrai** certificat commercial + publication Microsoft Store
+  (l'auto-signé et le side-load sont livrés en Inc 13)
 - Documentation utilisateur, site vitrine, FAQ
 - Télémétrie opt-in
 - Mise à jour automatique
 - Assistance LLM pour triage (opt-in, local ou paid)
 - Sync continue automatique sur connexion volume
-- Multi-PC sync (cloud index ou peer-to-peer)
+- Multi-PC sync **en écriture simultanée** (cloud index ou peer-to-peer) — le partage
+  séquentiel d'une base unique est livré en Inc 13
 - Plugins providers tiers
 - Beta privée
 

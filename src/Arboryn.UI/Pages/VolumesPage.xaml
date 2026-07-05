@@ -89,6 +89,19 @@
                                     <TextBlock Text="{x:Bind Name}"
                                                Style="{StaticResource ArborynBodyStrongText}"
                                                Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                                    <Border Background="{ThemeResource ArborynCardSecondaryBrush}"
+                                            CornerRadius="{StaticResource ArborynRadiusPill}"
+                                            BorderBrush="{ThemeResource ArborynStrokeCardBrush}"
+                                            BorderThickness="1"
+                                            Padding="8,1" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
+                                                      Glyph="&#xE977;" FontSize="11"
+                                                      Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                            <TextBlock Text="{x:Bind MachineLabel}" FontSize="10"
+                                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                        </StackPanel>
+                                    </Border>
                                     <Border Background="{ThemeResource ArborynAccentSelectedBgBrush}"
                                             CornerRadius="{StaticResource ArborynRadiusPill}"
                                             Padding="8,1" VerticalAlignment="Center"

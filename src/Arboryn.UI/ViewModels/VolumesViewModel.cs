@@ -24,6 +24,7 @@ namespace Arboryn.UI.ViewModels;
 public sealed class VolumesViewModel : INotifyPropertyChanged
 {
     private readonly IVolumeRepository _volumes;
+    private readonly IMachineRepository _machines;
     private readonly EnrollVolumeHandler _enroll;
     private readonly ActiveVolumeContext _activeVolume;
     private readonly ILogger<VolumesViewModel> _logger;
@@ -33,11 +34,13 @@ public sealed class VolumesViewModel : INotifyPropertyChanged
 
     public VolumesViewModel(
         IVolumeRepository volumes,
+        IMachineRepository machines,
         EnrollVolumeHandler enroll,
         ActiveVolumeContext activeVolume,
         ILogger<VolumesViewModel> logger)
     {
         _volumes = volumes;
+        _machines = machines;
         _enroll = enroll;
         _activeVolume = activeVolume;
         _logger = logger;
@@ -70,10 +73,13 @@ public sealed class VolumesViewModel : INotifyPropertyChanged
         try
         {
             var records = await _volumes.GetAllAsync(cancellationToken).ConfigureAwait(true);
+            var machines = await _machines.GetAllAsync(cancellationToken).ConfigureAwait(true);
+            var machineNames = machines.ToDictionary(m => m.Id.Value, m => m.Name, StringComparer.Ordinal);
             Volumes.Clear();
             foreach (var record in records)
             {
-                Volumes.Add(new VolumeRowItem(record, record.Id == _activeVolume.Current));
+                var machineName = record.MachineId is { } mid ? machineNames.GetValueOrDefault(mid) : null;
+                Volumes.Add(new VolumeRowItem(record, record.Id == _activeVolume.Current, machineName));
             }
 
             OnPropertyChanged(nameof(ActiveVolumeText));
@@ -208,13 +214,14 @@ public sealed class VolumeRowItem : INotifyPropertyChanged
 {
     private bool _isActive;
 
-    public VolumeRowItem(VolumeRecord record, bool isActive)
+    public VolumeRowItem(VolumeRecord record, bool isActive, string? machineName = null)
     {
         Id = record.Id;
         Name = record.Name;
         KindLabel = KindToLabel(record.Kind);
         StatusLabel = StatusToLabel(record.Status);
         Identity = BuildIdentity(record);
+        MachineLabel = BuildMachineLabel(record.Kind, machineName);
         MountPoint = string.IsNullOrWhiteSpace(record.MountPoint) ? "—" : record.MountPoint!;
         LastScanText = record.LastScanAt is { } scan
             ? scan.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.GetCultureInfo("fr-FR"))
@@ -232,6 +239,9 @@ public sealed class VolumeRowItem : INotifyPropertyChanged
     public string StatusLabel { get; }
 
     public string Identity { get; }
+
+    /// <summary>Machine (PC) propriétaire, pour distinguer deux volumes homonymes (Inc 13).</summary>
+    public string MachineLabel { get; }
 
     public string MountPoint { get; }
 
@@ -266,6 +276,13 @@ public sealed class VolumeRowItem : INotifyPropertyChanged
         VolumeStatus.Online => "Connecté",
         VolumeStatus.Offline => "Hors-ligne",
         _ => "Inconnu",
+    };
+
+    private static string BuildMachineLabel(VolumeKind kind, string? machineName) => kind switch
+    {
+        VolumeKind.Nas => "NAS partagé",
+        VolumeKind.Default => "—",
+        _ => string.IsNullOrWhiteSpace(machineName) ? "Machine inconnue" : machineName!,
     };
 
     private static string BuildIdentity(VolumeRecord record)

@@ -31,6 +31,10 @@ public static class InfrastructureServiceCollectionExtensions
         // Volumes (Inc 9) — dépôt + identification stable (VSN NTFS, empreinte SMB, marqueur .Arboryn)
         // + lecture USN Journal pour le re-scan incrémental (best-effort, repli mtime si indisponible).
         services.AddSingleton<IVolumeRepository, SqliteVolumeRepository>();
+        // Identité machine (Inc 13) — nomme le PC propriétaire d'un volume dans un
+        // catalogue partagé entre plusieurs postes (hostname capté à l'enrôlement).
+        services.AddSingleton<IMachineRepository, SqliteMachineRepository>();
+        services.AddSingleton<ILocalMachineProvider, EnvironmentMachineProvider>();
         // Périmètres de réplication (Inc 10) — expression de scope par volume (table replication_scopes)
         // + lecture du catalogue logique (œuvres + instances par volume) pour le calcul de placement.
         services.AddSingleton<IReplicationScopeRepository, SqliteReplicationScopeRepository>();

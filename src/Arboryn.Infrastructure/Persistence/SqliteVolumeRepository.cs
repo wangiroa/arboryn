@@ -31,7 +31,8 @@ public sealed class SqliteVolumeRepository : IVolumeRepository
                last_seen_at         AS LastSeenAt,
                last_scan_at         AS LastScanAt,
                status               AS Status,
-               replication_scope_id AS ReplicationScopeId
+               replication_scope_id AS ReplicationScopeId,
+               machine_id           AS MachineId
         FROM volumes
         """;
 
@@ -79,10 +80,10 @@ public sealed class SqliteVolumeRepository : IVolumeRepository
         const string sql = """
             INSERT INTO volumes
                 (id, name, kind, serial, fingerprint, label, mount_point, last_usn,
-                 last_seen_at, last_scan_at, status, replication_scope_id)
+                 last_seen_at, last_scan_at, status, replication_scope_id, machine_id)
             VALUES
                 (@Id, @Name, @Kind, @Serial, @Fingerprint, @Label, @MountPoint, @LastUsn,
-                 @LastSeenAt, @LastScanAt, @Status, @ReplicationScopeId)
+                 @LastSeenAt, @LastScanAt, @Status, @ReplicationScopeId, @MachineId)
             ON CONFLICT(id) DO UPDATE SET
                 name                 = excluded.name,
                 kind                 = excluded.kind,
@@ -94,7 +95,8 @@ public sealed class SqliteVolumeRepository : IVolumeRepository
                 last_seen_at         = excluded.last_seen_at,
                 last_scan_at         = excluded.last_scan_at,
                 status               = excluded.status,
-                replication_scope_id = excluded.replication_scope_id;
+                replication_scope_id = excluded.replication_scope_id,
+                machine_id           = excluded.machine_id;
             """;
 
         await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -112,6 +114,7 @@ public sealed class SqliteVolumeRepository : IVolumeRepository
             LastScanAt = ToIso(record.LastScanAt),
             Status = ToDbStatus(record.Status),
             record.ReplicationScopeId,
+            record.MachineId,
         }, cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
@@ -156,6 +159,7 @@ public sealed class SqliteVolumeRepository : IVolumeRepository
         LastSeenAt = ParseNullable(r.LastSeenAt),
         LastScanAt = ParseNullable(r.LastScanAt),
         ReplicationScopeId = r.ReplicationScopeId,
+        MachineId = r.MachineId,
     };
 
     private static string ToDbKind(VolumeKind kind) => kind switch
@@ -210,5 +214,6 @@ public sealed class SqliteVolumeRepository : IVolumeRepository
         string? LastSeenAt,
         string? LastScanAt,
         string Status,
-        string? ReplicationScopeId);
+        string? ReplicationScopeId,
+        string? MachineId);
 }

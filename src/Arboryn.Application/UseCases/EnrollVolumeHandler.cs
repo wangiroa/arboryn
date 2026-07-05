@@ -24,17 +24,23 @@ public sealed class EnrollVolumeHandler
     private readonly IVolumeIdentifier _identifier;
     private readonly IVolumeRepository _volumes;
     private readonly IFileInstanceRepository _instances;
+    private readonly IMachineRepository _machines;
+    private readonly ILocalMachineProvider _localMachine;
     private readonly ILogger<EnrollVolumeHandler> _logger;
 
     public EnrollVolumeHandler(
         IVolumeIdentifier identifier,
         IVolumeRepository volumes,
         IFileInstanceRepository instances,
+        IMachineRepository machines,
+        ILocalMachineProvider localMachine,
         ILogger<EnrollVolumeHandler> logger)
     {
         _identifier = identifier;
         _volumes = volumes;
         _instances = instances;
+        _machines = machines;
+        _localMachine = localMachine;
         _logger = logger;
     }
 
@@ -59,6 +65,8 @@ public sealed class EnrollVolumeHandler
                    ?? marker?.FriendlyName
                    ?? DeriveName(probe);
 
+        var machineId = await ResolveMachineIdAsync(probe.Kind, existing, cancellationToken).ConfigureAwait(false);
+
         var record = new VolumeRecord(id, name, probe.Kind, VolumeStatus.Online)
         {
             Serial = probe.Serial,
@@ -70,6 +78,7 @@ public sealed class EnrollVolumeHandler
             LastUsn = existing?.LastUsn,
             LastScanAt = existing?.LastScanAt,
             ReplicationScopeId = existing?.ReplicationScopeId,
+            MachineId = machineId,
         };
         await _volumes.UpsertAsync(record, cancellationToken).ConfigureAwait(false);
 
@@ -90,6 +99,32 @@ public sealed class EnrollVolumeHandler
             name, id, isNew ? "enrôlé" : "reconnu", probe.Root.Value, migrated);
 
         return new EnrollResult(record, isNew, migrated, markerWritten);
+    }
+
+    /// <summary>
+    /// Détermine la machine propriétaire à estampiller :
+    /// <list type="bullet">
+    ///   <item>NAS et volume « default » → <c>null</c> (agnostique / hérité) ;</item>
+    ///   <item>interne/externe → machine propriétaire existante si connue (un disque
+    ///     externe transporté d'un PC à l'autre conserve son propriétaire d'origine,
+    ///     un interne reste lié à son PC), sinon la machine locale (premier propriétaire).</item>
+    /// </list>
+    /// </summary>
+    private async Task<string?> ResolveMachineIdAsync(
+        VolumeKind kind, VolumeRecord? existing, CancellationToken cancellationToken)
+    {
+        if (kind is VolumeKind.Nas or VolumeKind.Default)
+        {
+            return null;
+        }
+
+        if (existing?.MachineId is { } owner)
+        {
+            return owner;
+        }
+
+        var local = await _machines.EnsureLocalAsync(_localMachine.Hostname, cancellationToken).ConfigureAwait(false);
+        return local.Value;
     }
 
     private async Task<VolumeRecord?> ResolveExistingAsync(

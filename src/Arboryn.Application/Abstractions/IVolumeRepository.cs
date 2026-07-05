@@ -68,4 +68,10 @@ public sealed record VolumeRecord(
 
     /// <summary>Scope de réplication associé (Inc 10), ou <c>null</c>.</summary>
     public string? ReplicationScopeId { get; init; }
+
+    /// <summary>
+    /// Machine (PC) propriétaire de ce volume (Inc 13), ou <c>null</c> pour un NAS
+    /// (agnostique), le volume « default », ou une ligne non encore attribuée.
+    /// </summary>
+    public string? MachineId { get; init; }
 }

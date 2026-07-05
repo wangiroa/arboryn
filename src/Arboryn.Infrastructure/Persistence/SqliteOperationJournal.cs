@@ -20,9 +20,11 @@ public sealed class SqliteOperationJournal : IOperationJournal
     {
         const string sql = """
             INSERT INTO operations
-                (id, kind, file_instance_id, old_path, new_path, old_metadata_json, status, batch_id, executed_at, created_at)
+                (id, kind, file_instance_id, source_volume_id, target_volume_id, old_path, new_path,
+                 old_metadata_json, status, batch_id, executed_at, created_at)
             VALUES
-                (@Id, @Kind, @FileInstanceId, @OldPath, @NewPath, @OldMetadataJson, @Status, @BatchId, @ExecutedAt, @CreatedAt);
+                (@Id, @Kind, @FileInstanceId, @SourceVolumeId, @TargetVolumeId, @OldPath, @NewPath,
+                 @OldMetadataJson, @Status, @BatchId, @ExecutedAt, @CreatedAt);
             """;
 
         await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -31,6 +33,8 @@ public sealed class SqliteOperationJournal : IOperationJournal
             Id = operation.Id.Value,
             Kind = OperationEnums.ToDb(operation.Kind),
             FileInstanceId = operation.FileInstanceId.Value,
+            SourceVolumeId = operation.SourceVolumeId?.Value,
+            TargetVolumeId = operation.TargetVolumeId?.Value,
             OldPath = operation.OldPath?.Value,
             NewPath = operation.NewPath?.Value,
             OldMetadataJson = operation.OldMetadataJson,
@@ -95,28 +99,39 @@ public sealed class SqliteOperationJournal : IOperationJournal
         return batchId is null ? null : new BatchId(batchId);
     }
 
+    private const string SelectColumns = """
+        SELECT id                AS Id,
+               batch_id          AS BatchId,
+               kind              AS Kind,
+               file_instance_id  AS FileInstanceId,
+               source_volume_id  AS SourceVolumeId,
+               target_volume_id  AS TargetVolumeId,
+               old_path          AS OldPath,
+               new_path          AS NewPath,
+               old_metadata_json AS OldMetadataJson,
+               status            AS Status,
+               created_at        AS CreatedAt,
+               executed_at       AS ExecutedAt,
+               undone_at         AS UndoneAt
+        FROM operations
+        """;
+
     public async Task<IReadOnlyList<Operation>> GetBatchAsync(BatchId batchId, CancellationToken cancellationToken)
     {
-        const string sql = """
-            SELECT id                AS Id,
-                   batch_id          AS BatchId,
-                   kind              AS Kind,
-                   file_instance_id  AS FileInstanceId,
-                   old_path          AS OldPath,
-                   new_path          AS NewPath,
-                   old_metadata_json AS OldMetadataJson,
-                   status            AS Status,
-                   created_at        AS CreatedAt,
-                   executed_at       AS ExecutedAt,
-                   undone_at         AS UndoneAt
-            FROM operations
-            WHERE batch_id = @BatchId
-            ORDER BY created_at;
-            """;
-
         await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
         var rows = await connection.QueryAsync<OpRow>(new CommandDefinition(
-            sql, new { BatchId = batchId.Value }, cancellationToken: cancellationToken)).ConfigureAwait(false);
+            $"{SelectColumns} WHERE batch_id = @BatchId ORDER BY created_at;",
+            new { BatchId = batchId.Value }, cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return rows.Select(Map).ToList();
+    }
+
+    public async Task<IReadOnlyList<Operation>> GetPendingReplicationOperationsAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<OpRow>(new CommandDefinition(
+            $"{SelectColumns} WHERE status = 'pending' AND source_volume_id IS NOT NULL ORDER BY created_at;",
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
 
         return rows.Select(Map).ToList();
     }
@@ -127,6 +142,16 @@ public sealed class SqliteOperationJournal : IOperationJournal
         await connection.ExecuteAsync(new CommandDefinition(
             "UPDATE operations SET status = 'undone', undone_at = @UndoneAt WHERE id = @Id;",
             new { UndoneAt = ToIso(undoneAt)!, Id = operationId.Value },
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+    }
+
+    public async Task SetStatusAsync(
+        OperationId operationId, OperationStatus status, DateTime? executedAt, CancellationToken cancellationToken)
+    {
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "UPDATE operations SET status = @Status, executed_at = COALESCE(@ExecutedAt, executed_at) WHERE id = @Id;",
+            new { Status = OperationEnums.ToDb(status), ExecutedAt = ToIso(executedAt), Id = operationId.Value },
             cancellationToken: cancellationToken)).ConfigureAwait(false);
     }
 
@@ -141,7 +166,9 @@ public sealed class SqliteOperationJournal : IOperationJournal
         ParseIso(r.CreatedAt)!.Value,
         ParseIso(r.ExecutedAt),
         ParseIso(r.UndoneAt),
-        r.OldMetadataJson);
+        r.OldMetadataJson,
+        r.SourceVolumeId is null ? null : new VolumeId(r.SourceVolumeId),
+        r.TargetVolumeId is null ? null : new VolumeId(r.TargetVolumeId));
 
     private static string? ToIso(DateTime? value)
         => value?.ToString("O", CultureInfo.InvariantCulture);
@@ -154,6 +181,8 @@ public sealed class SqliteOperationJournal : IOperationJournal
         string BatchId,
         string Kind,
         string? FileInstanceId,
+        string? SourceVolumeId,
+        string? TargetVolumeId,
         string? OldPath,
         string? NewPath,
         string? OldMetadataJson,

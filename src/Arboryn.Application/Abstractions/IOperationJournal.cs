@@ -20,4 +20,15 @@ public interface IOperationJournal
     Task<IReadOnlyList<Operation>> GetBatchAsync(BatchId batchId, CancellationToken cancellationToken);
 
     Task MarkUndoneAsync(OperationId operationId, DateTime undoneAt, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Opérations de réplication (Inc 10) en attente (statut <c>pending</c>, volume source/cible
+    /// renseigné) : celles différées faute de volume connecté, à reprendre au rebranchement.
+    /// </summary>
+    Task<IReadOnlyList<Operation>> GetPendingReplicationOperationsAsync(CancellationToken cancellationToken);
+
+    /// <summary>Met à jour le statut d'une opération (et sa date d'exécution si fournie).</summary>
+    Task SetStatusAsync(
+        OperationId operationId, Arboryn.Domain.Enums.OperationStatus status,
+        DateTime? executedAt, CancellationToken cancellationToken);
 }

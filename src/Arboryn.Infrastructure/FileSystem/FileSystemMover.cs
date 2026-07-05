@@ -25,4 +25,18 @@ public sealed class FileSystemMover : IFileMover
                 File.Move(source.Value, target.Value, overwrite: false);
             },
             cancellationToken);
+
+    public Task CopyAsync(FilePath source, FilePath target, CancellationToken cancellationToken)
+        => Task.Run(
+            () =>
+            {
+                var directory = Path.GetDirectoryName(target.Value);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.Copy(source.Value, target.Value, overwrite: false);
+            },
+            cancellationToken);
 }

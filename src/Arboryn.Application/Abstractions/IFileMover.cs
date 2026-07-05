@@ -13,4 +13,10 @@ public interface IFileMover
 
     /// <summary>Déplace <paramref name="source"/> vers <paramref name="target"/> (sans écraser une cible existante).</summary>
     Task MoveAsync(FilePath source, FilePath target, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Copie <paramref name="source"/> vers <paramref name="target"/> (réplication inter-volume,
+    /// Inc 10) sans écraser une cible existante. Crée l'arborescence cible au besoin.
+    /// </summary>
+    Task CopyAsync(FilePath source, FilePath target, CancellationToken cancellationToken);
 }

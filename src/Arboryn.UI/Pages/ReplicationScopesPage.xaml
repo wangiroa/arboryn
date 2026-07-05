@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Arboryn.UI.Pages.ReplicationScopesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:vm="using:Arboryn.UI.ViewModels">
+
+    <Grid Padding="32,24,32,16" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock Text="Réplication" Style="{StaticResource ArborynTitleText}"
+                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+            <TextBlock Text="Définissez, pour chaque volume, le périmètre de contenu qu'il doit répliquer. Le plan de placement fait ensuite converger chaque volume vers ce périmètre."
+                       Style="{StaticResource ArborynBodyText}"
+                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <muxc:ProgressBar Grid.Row="1" IsIndeterminate="True"
+                          Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+
+        <TextBlock Grid.Row="2" Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                   Style="{StaticResource ArborynCaptionText}"
+                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
+
+        <Border Grid.Row="3" Style="{StaticResource ArborynCardBorder}" Padding="0">
+            <ListView ItemsSource="{x:Bind ViewModel.Volumes, Mode=OneWay}"
+                      SelectionMode="None" Background="Transparent">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Padding" Value="16,12" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:VolumeScopeRow">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="3">
+                                <TextBlock Text="{x:Bind Name}"
+                                           Style="{StaticResource ArborynBodyStrongText}"
+                                           Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                                <TextBlock Style="{StaticResource ArborynCaptionText}"
+                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                                           TextTrimming="CharacterEllipsis">
+                                    <Run Text="Périmètre :" />
+                                    <Run Text="{x:Bind ScopeSummary}" />
+                                </TextBlock>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Définir le périmètre…"
+                                    Click="OnEditScopeClick" VerticalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Border>
+    </Grid>
+</Page>

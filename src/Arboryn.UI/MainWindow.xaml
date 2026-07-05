@@ -147,6 +147,12 @@
                     </muxc:NavigationViewItem.Icon>
                 </muxc:NavigationViewItem>
 
+                <muxc:NavigationViewItem Tag="replication" Content="Réplication">
+                    <muxc:NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE895;" />
+                    </muxc:NavigationViewItem.Icon>
+                </muxc:NavigationViewItem>
+
                 <muxc:NavigationViewItem Tag="placement" Content="Plan de placement">
                     <muxc:NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE8CE;" />

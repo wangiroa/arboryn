@@ -39,6 +39,14 @@ public static class ApplicationServiceCollectionExtensions
         services.AddTransient<EnrichDirectoryHandler>();
         services.AddTransient<ReviewEnrichmentCandidatesHandler>();
         services.AddTransient<EnrollVolumeHandler>();
+        // Réplication multi-support (Inc 10) — assemblage du catalogue + calcul du plan de placement.
+        services.AddTransient<Replication.PlacementPlanCalculator>();
+        services.AddTransient<Replication.BuildReplicationCatalogHandler>();
+        services.AddTransient<Replication.BuildReplicationPlanHandler>();
+        services.AddTransient<Replication.ReplicationOperationExecutor>();
+        services.AddTransient<Replication.ExecuteReplicationPlanHandler>();
+        services.AddTransient<Replication.ResumePendingReplicationHandler>();
+        services.AddTransient<Replication.UndoReplicationBatchHandler>();
         return services;
     }
 }

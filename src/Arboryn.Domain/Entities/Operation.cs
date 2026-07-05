@@ -21,4 +21,8 @@ public sealed record Operation(
     DateTime? ExecutedAt = null,
     DateTime? UndoneAt = null,
     /// <summary>Métadonnées d'origine (JSON) pour annuler un write-back (<see cref="OperationKind.MetadataWriteback"/>).</summary>
-    string? OldMetadataJson = null);
+    string? OldMetadataJson = null,
+    /// <summary>Volume source (réplication Inc 10) — volume agi pour rename/move/delete, source pour copy.</summary>
+    VolumeId? SourceVolumeId = null,
+    /// <summary>Volume cible (réplication Inc 10) — destination d'une copy inter-volume.</summary>
+    VolumeId? TargetVolumeId = null);

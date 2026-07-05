@@ -86,7 +86,14 @@
       "PowerShell(dotnet test C:\\\\dev\\\\arboryn\\\\tests\\\\Arboryn.Tests.Integration\\\\Arboryn.Tests.Integration.csproj -c Debug --filter \"FullyQualifiedName~RescanVolumeTests\" 2>&1)",
       "PowerShell($exe = \"C:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\bin\\\\x64\\\\Debug\\\\net8.0-windows10.0.19041.0\\\\win-x64\\\\Arboryn.UI.exe\"; $p = Start-Process -FilePath $exe -PassThru; Start-Sleep -Seconds 6; if \\(-not $p.HasExited\\) { \"ALIVE pid=$\\($p.Id\\) — démarrage OK\"; Stop-Process -Id $p.Id -Force } else { \"EXITED early code=$\\($p.ExitCode\\)\" })",
       "PowerShell(dotnet test C:\\\\dev\\\\arboryn\\\\tests\\\\Arboryn.Tests.Integration\\\\Arboryn.Tests.Integration.csproj -c Debug --filter \"FullyQualifiedName~ScanResilienceTests\" 2>&1)",
-      "PowerShell($exe = \"C:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\bin\\\\x64\\\\Debug\\\\net8.0-windows10.0.19041.0\\\\win-x64\\\\Arboryn.UI.exe\"; $p = Start-Process -FilePath $exe -PassThru; Start-Sleep -Seconds 7; if \\(-not $p.HasExited\\) { \"ALIVE pid=$\\($p.Id\\) — démarrage OK \\(InitializeAsync exécuté sans crash\\)\"; Stop-Process -Id $p.Id -Force } else { \"EXITED early code=$\\($p.ExitCode\\)\" })"
+      "PowerShell($exe = \"C:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\bin\\\\x64\\\\Debug\\\\net8.0-windows10.0.19041.0\\\\win-x64\\\\Arboryn.UI.exe\"; $p = Start-Process -FilePath $exe -PassThru; Start-Sleep -Seconds 7; if \\(-not $p.HasExited\\) { \"ALIVE pid=$\\($p.Id\\) — démarrage OK \\(InitializeAsync exécuté sans crash\\)\"; Stop-Process -Id $p.Id -Force } else { \"EXITED early code=$\\($p.ExitCode\\)\" })",
+      "PowerShell(dotnet build c:\\\\dev\\\\arboryn\\\\Arboryn.sln -c Debug --nologo -clp:ErrorsOnly 2>&1)",
+      "PowerShell(dotnet test c:\\\\dev\\\\arboryn\\\\tests\\\\Arboryn.Tests.Unit\\\\Arboryn.Tests.Unit.csproj -c Debug --nologo 2>&1)",
+      "PowerShell(dotnet test c:\\\\dev\\\\arboryn\\\\tests\\\\Arboryn.Tests.Integration\\\\Arboryn.Tests.Integration.csproj -c Debug --nologo 2>&1)",
+      "PowerShell(dotnet test c:\\\\dev\\\\arboryn\\\\tests\\\\Arboryn.Tests.Integration\\\\Arboryn.Tests.Integration.csproj -c Debug --nologo --filter \"FullyQualifiedName~ReplicationExecutionTests\" 2>&1)",
+      "Bash(grep -E \"\\\\.\\(xaml|cs\\)$\")",
+      "Bash(xargs -I {} basename {})",
+      "PowerShell(dotnet build c:\\\\dev\\\\arboryn\\\\src\\\\Arboryn.UI\\\\Arboryn.UI.csproj -c Debug -r win-x64 /p:Platform=x64 --nologo -clp:ErrorsOnly 2>&1)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Dominique\\.claude\\projects\\c--dev-arboryn\\memory"

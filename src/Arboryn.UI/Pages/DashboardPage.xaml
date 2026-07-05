@@ -7,9 +7,9 @@
     xmlns:vm="using:Arboryn.UI.ViewModels">
 
     <ScrollViewer>
-        <StackPanel Padding="32,24,32,32" Spacing="24" MaxWidth="1280">
+        <StackPanel Padding="32,24,32,32" Spacing="20" MaxWidth="1280">
 
-            <!-- Page head -->
+            <!-- Head -->
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -18,258 +18,222 @@
                 <StackPanel Grid.Column="0" Spacing="4">
                     <TextBlock Text="Tableau de bord" Style="{StaticResource ArborynTitleText}"
                                Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                    <TextBlock x:Name="SubtitleText"
+                    <TextBlock Text="{x:Bind ViewModel.StatusLine, Mode=OneWay}"
                                Style="{StaticResource ArborynBodyText}"
-                               Foreground="{ThemeResource ArborynTextSecondaryBrush}"
-                               Text="Vue d'ensemble de votre bibliothèque." />
+                               Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Click="OnExportClick" IsEnabled="{x:Bind ViewModel.HasVolumes, Mode=OneWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xEDE1;" FontSize="14" />
+                            <TextBlock Text="Exporter…" />
+                        </StackPanel>
+                    </Button>
                     <Button Click="OnRescanClick">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                                      Glyph="&#xE895;" FontSize="14" />
+                            <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xE895;" FontSize="14" />
                             <TextBlock Text="Lancer un scan…" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
             </Grid>
 
-            <!-- Grid 2 cols -->
-            <Grid ColumnSpacing="20" RowSpacing="20">
+            <muxc:ProgressBar IsIndeterminate="True" Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay}" />
+
+            <!-- KPI strip -->
+            <Grid ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.3*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <!-- Carte Santé -->
-                <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource ArborynCardBorder}">
-                    <StackPanel Spacing="16">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                                          Glyph="&#xEA18;" FontSize="18"
-                                          Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                                <TextBlock Text="Santé du système"
-                                           Style="{StaticResource ArborynBodyStrongText}"
-                                           Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                            </StackPanel>
-                            <Border Grid.Column="2"
-                                    Background="{ThemeResource ArborynSuccessBgBrush}"
-                                    CornerRadius="{StaticResource ArborynRadiusPill}"
-                                    Padding="10,4">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <Ellipse Width="8" Height="8"
-                                             Fill="{ThemeResource ArborynSuccessBrush}" />
-                                    <TextBlock Text="Opérationnel"
-                                               Style="{StaticResource ArborynCaptionText}"
-                                               Foreground="{ThemeResource ArborynSuccessBrush}" />
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-
-                        <Grid ColumnSpacing="12" RowSpacing="12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource ArborynSecondaryCardBorder}">
-                                <StackPanel Spacing="8">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Ellipse Width="8" Height="8"
-                                                 Fill="{ThemeResource ArborynStatusOnlineBrush}" />
-                                        <TextBlock Text="Volume actif"
-                                                   Style="{StaticResource ArborynCaptionText}"
-                                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-                                    </StackPanel>
-                                    <TextBlock Text="default"
-                                               Style="{StaticResource ArborynSubtitleText}"
-                                               Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                                    <TextBlock Text="Multi-volume disponible à l'Inc 9"
-                                               Style="{StaticResource ArborynCaptionText}"
-                                               Foreground="{ThemeResource ArborynTextTertiaryBrush}" />
-                                </StackPanel>
-                            </Border>
-
-                            <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource ArborynSecondaryCardBorder}">
-                                <StackPanel Spacing="8">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                                                  Glyph="&#xE823;" FontSize="12"
-                                                  Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-                                        <TextBlock Text="Opérations en attente"
-                                                   Style="{StaticResource ArborynCaptionText}"
-                                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-                                    </StackPanel>
-                                    <TextBlock Text="0"
-                                               Style="{StaticResource ArborynSubtitleText}"
-                                               Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                                    <TextBlock Text="Aucune opération différée."
-                                               Style="{StaticResource ArborynCaptionText}"
-                                               Foreground="{ThemeResource ArborynTextTertiaryBrush}" />
-                                </StackPanel>
-                            </Border>
-
-                            <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource ArborynSecondaryCardBorder}">
-                                <StackPanel Spacing="8">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Ellipse Width="8" Height="8"
-                                                 Fill="{ThemeResource ArborynStatusUnknownBrush}" />
-                                        <TextBlock Text="Conflits non résolus"
-                                                   Style="{StaticResource ArborynCaptionText}"
-                                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-                                    </StackPanel>
-                                    <TextBlock Text="0"
-                                               Style="{StaticResource ArborynSubtitleText}"
-                                               Foreground="{ThemeResource ArborynCautionBrush}" />
-                                    <TextBlock Text="Détectés à partir de l'Inc 10."
-                                               Style="{StaticResource ArborynCaptionText}"
-                                               Foreground="{ThemeResource ArborynTextTertiaryBrush}" />
-                                </StackPanel>
-                            </Border>
-
-                            <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ArborynSecondaryCardBorder}">
-                                <StackPanel Spacing="8">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                                                  Glyph="&#xE895;" FontSize="12"
-                                                  Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-                                        <TextBlock Text="Dernier scan"
-                                                   Style="{StaticResource ArborynCaptionText}"
-                                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-                                    </StackPanel>
-                                    <TextBlock x:Name="LastScanText" Text="—"
-                                               Style="{StaticResource ArborynBodyStrongText}"
-                                               Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                                    <TextBlock Text="USN Journal disponible à l'Inc 9."
-                                               Style="{StaticResource ArborynCaptionText}"
-                                               Foreground="{ThemeResource ArborynTextTertiaryBrush}" />
-                                </StackPanel>
-                            </Border>
-                        </Grid>
+                <Border Grid.Column="0" Style="{StaticResource ArborynCardBorder}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{x:Bind ViewModel.LogicalFilesText, Mode=OneWay}"
+                                   Style="{StaticResource ArborynTitleText}"
+                                   Foreground="{ThemeResource ArborynAccentTextBrush}" />
+                        <TextBlock Text="œuvres uniques" Style="{StaticResource ArborynCaptionText}"
+                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
-
-                <!-- Carte Inventaire -->
-                <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource ArborynCardBorder}">
-                    <StackPanel Spacing="14">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                                      Glyph="&#xE8F1;" FontSize="18" />
-                            <TextBlock Text="Inventaire"
-                                       Style="{StaticResource ArborynBodyStrongText}"
-                                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                        </StackPanel>
-
-                        <StackPanel Spacing="2">
-                            <TextBlock x:Name="LogicalFilesText"
-                                       Text="0"
-                                       Style="{StaticResource ArborynTitleText}"
-                                       Foreground="{ThemeResource ArborynAccentTextBrush}" />
-                            <TextBlock Text="œuvres uniques (LogicalFiles)"
-                                       Style="{StaticResource ArborynCaptionText}"
-                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-                        </StackPanel>
-
-                        <Border Background="{ThemeResource ArborynStrokeDividerBrush}" Height="1" />
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Spacing="2">
-                                <TextBlock x:Name="FileInstancesText" Text="0"
-                                           Style="{StaticResource ArborynSubtitleText}"
-                                           Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                                <TextBlock Text="copies (FileInstances)"
-                                           Style="{StaticResource ArborynCaptionText}"
-                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Spacing="2" HorizontalAlignment="Right">
-                                <TextBlock x:Name="RedundancyText" Text="—"
-                                           Style="{StaticResource ArborynSubtitleText}"
-                                           Foreground="{ThemeResource ArborynCautionBrush}" />
-                                <TextBlock Text="taux de redondance"
-                                           Style="{StaticResource ArborynCaptionText}"
-                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-                            </StackPanel>
-                        </Grid>
+                <Border Grid.Column="1" Style="{StaticResource ArborynCardBorder}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{x:Bind ViewModel.FileInstancesText, Mode=OneWay}"
+                                   Style="{StaticResource ArborynTitleText}"
+                                   Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                        <TextBlock Text="copies physiques" Style="{StaticResource ArborynCaptionText}"
+                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
-
-                <!-- Carte « À faire » -->
-                <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource ArborynCardBorder}">
-                    <StackPanel Spacing="12">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                                          Glyph="&#xEA80;" FontSize="18" />
-                                <TextBlock Text="À faire"
-                                           Style="{StaticResource ArborynBodyStrongText}"
-                                           Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                            </StackPanel>
-                            <TextBlock Grid.Column="2" Text="Suggéré"
-                                       Style="{StaticResource ArborynCaptionText}"
-                                       Foreground="{ThemeResource ArborynTextTertiaryBrush}"
-                                       VerticalAlignment="Center" />
-                        </Grid>
-
-                        <StackPanel x:Name="TodosPanel" Spacing="8" />
+                <Border Grid.Column="2" Style="{StaticResource ArborynCardBorder}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{x:Bind ViewModel.RedundancyText, Mode=OneWay}"
+                                   Style="{StaticResource ArborynTitleText}"
+                                   Foreground="{ThemeResource ArborynCautionBrush}" />
+                        <TextBlock Text="taux de redondance" Style="{StaticResource ArborynCaptionText}"
+                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
-
-                <!-- Activité récente -->
-                <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource ArborynCardBorder}">
-                    <StackPanel Spacing="12">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                                          Glyph="&#xE81C;" FontSize="18" />
-                                <TextBlock Text="Activité récente"
-                                           Style="{StaticResource ArborynBodyStrongText}"
-                                           Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                            </StackPanel>
-                            <Button Grid.Column="1"
-                                    Style="{StaticResource ArborynSubtleButton}"
-                                    Content="Tout voir"
-                                    Click="OnGoToHistoryClick" />
-                        </Grid>
-                        <TextBlock x:Name="ActivityPlaceholder"
-                                   Text="L'activité détaillée par catégorie d'opération (rename, move, copy, delete) sera affichée ici dès l'arrivée de l'écran Historique complet."
-                                   Style="{StaticResource ArborynBodyText}"
-                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}"
-                                   TextWrapping="Wrap" />
+                <Border Grid.Column="3" Style="{StaticResource ArborynCardBorder}">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{x:Bind ViewModel.TotalSpaceText, Mode=OneWay}"
+                                   Style="{StaticResource ArborynTitleText}"
+                                   Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                        <TextBlock Text="espace physique total" Style="{StaticResource ArborynCaptionText}"
+                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
                     </StackPanel>
                 </Border>
             </Grid>
 
-            <TextBlock x:Name="StatusBar"
-                       Style="{StaticResource ArborynCaptionText}"
-                       Foreground="{ThemeResource ArborynTextTertiaryBrush}"
-                       Text="" />
+            <!-- Health -->
+            <Border Style="{StaticResource ArborynCardBorder}">
+                <StackPanel Spacing="14">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}" Glyph="&#xEA18;" FontSize="16" />
+                        <TextBlock Text="Santé" Style="{StaticResource ArborynBodyStrongText}"
+                                   Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                    </StackPanel>
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{x:Bind ViewModel.VolumesText, Mode=OneWay}"
+                                       Style="{StaticResource ArborynSubtitleText}"
+                                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                            <TextBlock Text="volumes en ligne" Style="{StaticResource ArborynCaptionText}"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock Text="{x:Bind ViewModel.PendingOperationsText, Mode=OneWay}"
+                                       Style="{StaticResource ArborynSubtitleText}"
+                                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                            <TextBlock Text="opérations en attente" Style="{StaticResource ArborynCaptionText}"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="2">
+                            <TextBlock Text="{x:Bind ViewModel.StaleText, Mode=OneWay}"
+                                       Style="{StaticResource ArborynSubtitleText}"
+                                       Foreground="{ThemeResource ArborynCautionBrush}" />
+                            <TextBlock Text="scans anciens (&gt; 30 j)" Style="{StaticResource ArborynCaptionText}"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="3" Spacing="2">
+                            <TextBlock Text="{x:Bind ViewModel.LastScanText, Mode=OneWay}"
+                                       Style="{StaticResource ArborynSubtitleText}"
+                                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                            <TextBlock Text="plus ancien scan" Style="{StaticResource ArborynCaptionText}"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Category breakdown -->
+            <Border Style="{StaticResource ArborynCardBorder}">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Par catégorie" Style="{StaticResource ArborynBodyStrongText}"
+                               Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Categories, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CategoryRow">
+                                <Grid ColumnSpacing="12" Padding="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{x:Bind Label}"
+                                               Style="{StaticResource ArborynBodyText}"
+                                               Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                                    <TextBlock Grid.Column="1" Text="{x:Bind CountText}" MinWidth="90"
+                                               Style="{StaticResource ArborynCaptionText}"
+                                               Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                    <TextBlock Grid.Column="2" Text="{x:Bind SpaceText}" MinWidth="80"
+                                               TextAlignment="Right"
+                                               Style="{StaticResource ArborynCaptionText}"
+                                               Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Matrix volume × category -->
+            <Border Style="{StaticResource ArborynCardBorder}">
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Volumes × catégories" Style="{StaticResource ArborynBodyStrongText}"
+                                   Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                        <TextBlock Text="Chaque cellule : présent / attendu dans le périmètre. Rouge = manque (à copier), ambre = surplus (hors scope)."
+                                   Style="{StaticResource ArborynCaptionText}"
+                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Volumes, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:VolumeMatrixRow">
+                                <Border Style="{StaticResource ArborynSecondaryCardBorder}" Margin="0,0,0,10">
+                                    <StackPanel Spacing="8">
+                                        <Grid ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{x:Bind Name}"
+                                                               Style="{StaticResource ArborynBodyStrongText}"
+                                                               Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                                                    <Border Style="{StaticResource ArborynBadgeBorder}">
+                                                        <TextBlock Text="{x:Bind StatusLabel}" FontSize="11"
+                                                                   Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{x:Bind ScopeSummary}"
+                                                           Style="{StaticResource ArborynCaptionText}"
+                                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind SpaceText}" VerticalAlignment="Center"
+                                                           Style="{StaticResource ArborynCaptionText}"
+                                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                                <Button Content="Détails" Click="OnVolumeDetailsClick"
+                                                        Visibility="{x:Bind HasGapOrSurplus}" />
+                                            </StackPanel>
+                                        </Grid>
+                                        <ItemsControl ItemsSource="{x:Bind Cells}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:MatrixCellView">
+                                                    <Border Background="{x:Bind Background}"
+                                                            CornerRadius="{StaticResource ArborynRadiusControl}"
+                                                            Padding="8,4" Margin="0,0,8,8">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <TextBlock Text="{x:Bind Label}" FontSize="11"
+                                                                       Foreground="{x:Bind Foreground}" />
+                                                            <TextBlock Text="{x:Bind ValueText}" FontSize="11" FontWeight="SemiBold"
+                                                                       Foreground="{x:Bind Foreground}" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </Page>

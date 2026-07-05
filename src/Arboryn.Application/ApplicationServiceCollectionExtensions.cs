@@ -47,6 +47,11 @@ public static class ApplicationServiceCollectionExtensions
         services.AddTransient<Replication.ExecuteReplicationPlanHandler>();
         services.AddTransient<Replication.ResumePendingReplicationHandler>();
         services.AddTransient<Replication.UndoReplicationBatchHandler>();
+        // Tableau de bord inventaire (Inc 11) — instantané matrice/stats/santé + recherche cross-volume.
+        services.AddTransient<Inventory.InventoryDashboardHandler>();
+        services.AddTransient<Inventory.CrossVolumeSearchHandler>();
+        services.AddTransient<Inventory.VolumeDrillDownHandler>();
+        services.AddTransient<Inventory.InventoryExportHandler>();
         return services;
     }
 }

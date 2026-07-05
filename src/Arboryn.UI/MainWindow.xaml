@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
     xmlns:ctrl="using:Arboryn.UI.Controls"
+    xmlns:vm="using:Arboryn.UI.ViewModels"
     Title="Arboryn">
 
     <Grid Background="{ThemeResource ArborynAppBackgroundBrush}">
@@ -19,46 +20,35 @@
               Background="Transparent"
               ColumnSpacing="12" Padding="12,0,12,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- Volume pill -->
-            <Button Grid.Column="0"
-                    Style="{StaticResource ArborynPillButton}"
-                    VerticalAlignment="Center"
-                    ToolTipService.ToolTip="Volume actif"
-                    Click="OnVolumePillClick">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                              Glyph="&#xE975;" FontSize="14" />
-                    <TextBlock x:Name="ActiveVolumeText" Text="Tous les volumes"
-                               VerticalAlignment="Center" />
-                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                              Glyph="&#xE70D;" FontSize="10"
-                              Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
-                </StackPanel>
-            </Button>
-
-            <!-- Universal search -->
-            <AutoSuggestBox Grid.Column="1"
+            <!-- Universal search (recherche cross-volume « où est X ? ») -->
+            <AutoSuggestBox Grid.Column="0"
                             x:Name="UniversalSearch"
                             VerticalAlignment="Center"
-                            MaxWidth="560"
+                            HorizontalAlignment="Left"
+                            Width="480" MaxWidth="560"
                             QueryIcon="Find"
-                            PlaceholderText="Recherche universelle dans le catalogue…" />
+                            TextMemberPath="FileName"
+                            TextChanged="OnUniversalSearchTextChanged"
+                            PlaceholderText="Rechercher une œuvre dans tous les volumes…">
+                <AutoSuggestBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:UniversalSearchItem">
+                        <StackPanel Spacing="1" Padding="0,4">
+                            <TextBlock Text="{x:Bind FileName}"
+                                       Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
+                            <TextBlock Text="{x:Bind Detail}" FontSize="11"
+                                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </AutoSuggestBox.ItemTemplate>
+            </AutoSuggestBox>
 
-            <!-- Trailing actions -->
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6"
+            <!-- Trailing actions : uniquement l'indicateur d'activité (scan). -->
+            <StackPanel Grid.Column="1" x:Name="TrailingActions" Orientation="Horizontal" Spacing="6"
                         VerticalAlignment="Center">
-                <Button x:Name="ThemeToggleButton"
-                        Style="{StaticResource ArborynSubtleButton}"
-                        ToolTipService.ToolTip="Basculer clair / sombre"
-                        Click="OnThemeToggleClick">
-                    <FontIcon FontFamily="{StaticResource ArborynIconFontFamily}"
-                              Glyph="&#xE774;" FontSize="16" />
-                </Button>
                 <Border Background="{ThemeResource ArborynAccentSelectedBgBrush}"
                         CornerRadius="{StaticResource ArborynRadiusPill}"
                         Padding="10,4" VerticalAlignment="Center"
@@ -68,13 +58,6 @@
                         <TextBlock Text="Scan" Style="{StaticResource ArborynCaptionText}"
                                    Foreground="{ThemeResource ArborynAccentTextBrush}" />
                     </StackPanel>
-                </Border>
-                <Border Background="{ThemeResource ArborynAccentSelectedBgBrush}"
-                        CornerRadius="16" Width="32" Height="32"
-                        VerticalAlignment="Center">
-                    <TextBlock Text="AB" FontSize="12" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               Foreground="{ThemeResource ArborynAccentTextBrush}" />
                 </Border>
             </StackPanel>
         </Grid>

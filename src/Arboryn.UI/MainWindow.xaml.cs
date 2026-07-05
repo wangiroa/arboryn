@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using Arboryn.Application.Inventory;
+using Arboryn.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -16,6 +19,7 @@ public sealed partial class MainWindow : Window
     private readonly IServiceProvider _services;
     private readonly Dictionary<string, Type> _pages;
     private string? _currentRoute;
+    private AppWindow? _appWindow;
 
     public MainWindow(IServiceProvider services)
     {
@@ -25,6 +29,7 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         ApplyAppIcon();
+        ConfigureTitleBarInsets();
 
         _pages = new Dictionary<string, Type>
         {
@@ -69,10 +74,37 @@ public sealed partial class MainWindow : Window
         {
             return;
         }
-        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
-        var appWindow = AppWindow.GetFromWindowId(windowId);
-        appWindow.SetIcon(iconPath);
+        AppWindowRef().SetIcon(iconPath);
+    }
+
+    private AppWindow AppWindowRef()
+    {
+        if (_appWindow is null)
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
+            _appWindow = AppWindow.GetFromWindowId(windowId);
+        }
+
+        return _appWindow;
+    }
+
+    /// <summary>
+    /// Réserve, à droite de la barre de titre personnalisée, la largeur des boutons système
+    /// (réduire / agrandir / fermer) pour que les actions (thème, activité, compte) ne les
+    /// recouvrent plus. La largeur (RightInset) est en pixels physiques → convertie en DIP.
+    /// </summary>
+    private void ConfigureTitleBarInsets()
+    {
+        AppTitleBar.SizeChanged += (_, _) => UpdateCaptionInset();
+        AppTitleBar.Loaded += (_, _) => UpdateCaptionInset();
+    }
+
+    private void UpdateCaptionInset()
+    {
+        var scale = AppTitleBar.XamlRoot?.RasterizationScale ?? 1.0;
+        var rightInsetDip = AppWindowRef().TitleBar.RightInset / scale;
+        TrailingActions.Margin = new Thickness(0, 0, rightInsetDip, 0);
     }
 
     /// <summary>
@@ -122,22 +154,34 @@ public sealed partial class MainWindow : Window
         _currentRoute = route;
     }
 
-    private void OnThemeToggleClick(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Recherche cross-volume « où est X ? » (Inc 11) : à la frappe, propose les œuvres dont le
+    /// nom/chemin correspond, avec la liste des volumes où chacune est présente.
+    /// </summary>
+    private async void OnUniversalSearchTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
-        if (Content is FrameworkElement root)
+        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput)
         {
-            root.RequestedTheme = root.RequestedTheme switch
-            {
-                ElementTheme.Light => ElementTheme.Dark,
-                ElementTheme.Dark => ElementTheme.Light,
-                _ => Microsoft.UI.Xaml.Application.Current.RequestedTheme == ApplicationTheme.Dark ? ElementTheme.Light : ElementTheme.Dark,
-            };
+            return;
         }
-    }
 
-    private void OnVolumePillClick(object sender, RoutedEventArgs e)
-    {
-        // Inc 9 : sélecteur de volume. Pour l'instant, no-op.
+        var query = sender.Text?.Trim() ?? string.Empty;
+        if (query.Length < 2)
+        {
+            sender.ItemsSource = null;
+            return;
+        }
+
+        try
+        {
+            var handler = _services.GetRequiredService<CrossVolumeSearchHandler>();
+            var results = await handler.SearchAsync(query, maxResults: 12).ConfigureAwait(true);
+            sender.ItemsSource = results.Select(r => new UniversalSearchItem(r)).ToList();
+        }
+        catch
+        {
+            sender.ItemsSource = null;
+        }
     }
 
     private void OnCancelScanClick(object sender, RoutedEventArgs e)

@@ -35,6 +35,8 @@ public static class InfrastructureServiceCollectionExtensions
         // + lecture du catalogue logique (œuvres + instances par volume) pour le calcul de placement.
         services.AddSingleton<IReplicationScopeRepository, SqliteReplicationScopeRepository>();
         services.AddSingleton<IReplicationCatalogReader, SqliteReplicationCatalogReader>();
+        // Tableau de bord inventaire (Inc 11) — lecture agrégée + recherche cross-volume.
+        services.AddSingleton<IInventoryReader, SqliteInventoryReader>();
         services.AddSingleton<IVolumeIdentifier, WindowsVolumeIdentifier>();
         services.AddSingleton<IUsnJournalReader, WindowsUsnJournalReader>();
         services.AddSingleton<IFileMetadataRepository, SqliteFileMetadataRepository>();

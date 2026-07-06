@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Manifeste MSIX d'Arboryn (Inc 13, tranche B). Utilisé uniquement lors d'un build packagé
-  (msbuild /p:ArborynPackage=true) ; le build/dev/CI par défaut reste WindowsPackageType=None.
-  Le Publisher (CN=Arboryn) DOIT correspondre au sujet du certificat de signature.
+  Manifeste MSIX d'Arboryn (Inc 13, tranche B). Consommé par packaging/build-msix.ps1 qui packe
+  une publication self-contained via makeappx (aucun Visual Studio requis). App desktop full-trust
+  (EntryPoint Windows.FullTrustApplication). Le Publisher (CN=Arboryn) DOIT correspondre au sujet
+  du certificat de signature ; le script injecte la ProcessorArchitecture cible dans l'Identity.
 -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -32,8 +33,8 @@
 
   <Applications>
     <Application Id="App"
-      Executable="$targetnametoken$.exe"
-      EntryPoint="$targetentrypoint$">
+      Executable="Arboryn.UI.exe"
+      EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="Arboryn"
         Description="Gestion et uniformisation de bibliothèque média multi-support"

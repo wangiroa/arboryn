@@ -54,4 +54,34 @@ public class OperationJournalTests
         // Une fois annulé, le lot n'est plus proposé à l'undo.
         (await journal.GetLastUndoableDeleteBatchAsync(CancellationToken.None)).Should().BeNull();
     }
+
+    [Fact]
+    public async Task GetRecent_ReturnsNewestFirst_BoundedByLimit()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+
+        var repo = new SqliteFileInstanceRepository(db.Factory);
+        var instance = new FileInstanceRecord(
+            FileInstanceId.New(), VolumeId.Default, FilePath.From(@"C:\docs\f.txt"),
+            CanonicalName.From("f.txt"), 10, DateTime.UtcNow);
+        await repo.UpsertAsync(instance, CancellationToken.None);
+
+        var journal = new SqliteOperationJournal(db.Factory);
+        var t0 = new DateTime(2026, 7, 1, 8, 0, 0, DateTimeKind.Utc);
+
+        async Task Append(string name, DateTime at) => await journal.AppendAsync(new Operation(
+            OperationId.New(), BatchId.New(), OperationKind.Rename, instance.Id,
+            FilePath.From(@"C:\docs\old.txt"), FilePath.From($@"C:\docs\{name}"),
+            OperationStatus.Completed, at, at), CancellationToken.None);
+
+        await Append("a.txt", t0);
+        await Append("b.txt", t0.AddMinutes(1));
+        await Append("c.txt", t0.AddMinutes(2));
+
+        var recent = await journal.GetRecentAsync(2, CancellationToken.None);
+
+        recent.Should().HaveCount(2);                               // borné par la limite
+        recent[0].NewPath!.Value.Value.Should().EndWith("c.txt");   // le plus récent d'abord
+        recent[1].NewPath!.Value.Value.Should().EndWith("b.txt");
+    }
 }

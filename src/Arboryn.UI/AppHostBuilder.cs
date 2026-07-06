@@ -98,6 +98,7 @@ internal static class AppHostBuilder
                 services.AddSingleton<ReplicationScopesViewModel>();
                 services.AddSingleton<PlacementReviewViewModel>();
                 services.AddSingleton<DatabaseSettingsViewModel>();
+                services.AddSingleton<HistoryViewModel>();
 
                 // Shell — instancié une fois, reçoit le ServiceProvider pour résoudre les pages enfants.
                 services.AddSingleton<MainWindow>(sp => new MainWindow(sp));

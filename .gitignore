@@ -3,6 +3,12 @@ bin/
 obj/
 out/
 
+# Packaging (MSIX, publications, certificats) — Inc 13 B
+artifacts/
+*.msix
+*.cer
+*.pfx
+
 # IDE
 .vs/
 .vscode/

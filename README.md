@@ -13,8 +13,11 @@ brief architectural complet et la roadmap par incréments.
 - Windows 11 22H2 ou plus récent
 - .NET 8 SDK
 - Windows App SDK 1.5+
-- Visual Studio 2022 17.8+ (charge de travail « Développement Windows » ; ajouter les outils de
-  packaging MSIX pour construire l'installeur signé)
+- Visual Studio 2022 17.8+ (IDE recommandé, mais **facultatif** : build, tests et packaging MSIX
+  fonctionnent avec le seul SDK .NET en ligne de commande)
+
+> Les commandes ci-dessous s'exécutent depuis la **racine du dépôt** (`c:\dev\arboryn`), pas
+> depuis un sous-dossier.
 
 ## Build et test
 
@@ -67,21 +70,25 @@ produit ces ZIP par architecture sur un tag `v*`.
 
 ### Installeur MSIX signé
 
-[`packaging/build-msix.ps1`](packaging/build-msix.ps1) construit un MSIX auto-contenu et le signe
-avec un certificat auto-signé « CN=Arboryn » (créé au besoin). Nécessite Visual Studio avec la
-charge de travail de packaging desktop.
+[`packaging/build-msix.ps1`](packaging/build-msix.ps1) publie l'app en self-contained puis
+l'empaquette avec `makeappx` + `signtool` (fournis par le NuGet `Microsoft.Windows.SDK.BuildTools`
+déjà référencé) et la signe avec un certificat auto-signé « CN=Arboryn » (créé au besoin).
+**Aucun Visual Studio requis** — le seul SDK .NET suffit.
 
 ```powershell
+# depuis la racine du dépôt
 pwsh packaging/build-msix.ps1 -Rid win-x64
+# → artifacts/Arboryn_0.13.0.0_x64.msix + artifacts/Arboryn.cer
 ```
 
-Le build/CI par défaut restent inchangés : le packaging n'est activé que par
-`/p:ArborynPackage=true` (l'app reste `WindowsPackageType=None` sinon). Sur le poste cible, un MSIX
-auto-signé exige une étape unique (PowerShell **administrateur**) :
+Le build/CI par défaut restent inchangés : l'app reste `WindowsPackageType=None` ; le MSIX est
+produit hors du build MSBuild. Sur le poste cible, un MSIX auto-signé exige une étape unique
+(PowerShell **administrateur**) :
 
 ```powershell
-packaging/Install-Arboryn.ps1 -PackagePath Arboryn_0.13.0.0_x64.msix -CertPath Arboryn.cer
+packaging/Install-Arboryn.ps1 -PackagePath artifacts\Arboryn_0.13.0.0_x64.msix -CertPath artifacts\Arboryn.cer
 ```
+
 
 Avec un vrai certificat commercial (roadmap « Futur »), l'import du `.cer` devient inutile.
 

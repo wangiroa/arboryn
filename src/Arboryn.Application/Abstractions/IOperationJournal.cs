@@ -19,6 +19,12 @@ public interface IOperationJournal
 
     Task<IReadOnlyList<Operation>> GetBatchAsync(BatchId batchId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Opérations les plus récentes (tous types confondus), les plus récentes d'abord, pour
+    /// l'écran Historique. Bornées par <paramref name="limit"/>.
+    /// </summary>
+    Task<IReadOnlyList<Operation>> GetRecentAsync(int limit, CancellationToken cancellationToken);
+
     Task MarkUndoneAsync(OperationId operationId, DateTime undoneAt, CancellationToken cancellationToken);
 
     /// <summary>

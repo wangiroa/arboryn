@@ -9,11 +9,10 @@
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
-    <!-- Packaging MSIX opt-in (Inc 13, B) : build/dev/CI par défaut = None (exe portable,
-         lançable sans installation). Un build « msbuild /p:ArborynPackage=true » bascule en
-         MSIX (packagé, signé) sans changer le comportement par défaut. -->
-    <WindowsPackageType Condition="'$(ArborynPackage)' != 'true'">None</WindowsPackageType>
-    <WindowsPackageType Condition="'$(ArborynPackage)' == 'true'">MSIX</WindowsPackageType>
+    <!-- Toujours non packagé : l'exe portable démarre sans installation. Le MSIX (Inc 13, B) est
+         produit hors du build MSBuild, en packant la publication self-contained via makeappx
+         (packaging/build-msix.ps1) — aucun Visual Studio requis. -->
+    <WindowsPackageType>None</WindowsPackageType>
     <!-- App non packagée : embarque le runtime Windows App SDK pour un exe portable
          qui démarre sans installation préalable du Windows App Runtime. -->
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
@@ -59,20 +58,15 @@
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
 
-    <!-- Assets visuels MSIX (Inc 13, B) — régénérables via Assets\generate-msix-assets.ps1. -->
-    <Content Include="Assets\Square44x44Logo.png" />
-    <Content Include="Assets\Square71x71Logo.png" />
-    <Content Include="Assets\Square150x150Logo.png" />
-    <Content Include="Assets\Square310x310Logo.png" />
-    <Content Include="Assets\Wide310x150Logo.png" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\SplashScreen.png" />
-  </ItemGroup>
-
-  <!-- Manifeste MSIX : inclus uniquement lors d'un build packagé (build/dev/CI inchangés). -->
-  <ItemGroup Condition="'$(ArborynPackage)' == 'true'">
-    <AppxManifest Include="Package.appxmanifest">
-      <SubType>Designer</SubType>
-    </AppxManifest>
+    <!-- Assets visuels MSIX (Inc 13, B) — régénérables via Assets\generate-msix-assets.ps1.
+         Copiés en sortie pour que la publication self-contained les contienne (makeappx les
+         empaquette). Poids négligeable pour l'exe portable. -->
+    <Content Include="Assets\Square44x44Logo.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\Square71x71Logo.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\Square150x150Logo.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\Square310x310Logo.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\Wide310x150Logo.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\StoreLogo.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="Assets\SplashScreen.png"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
   </ItemGroup>
 </Project>

@@ -3,21 +3,104 @@
     x:Class="Arboryn.UI.Pages.HistoryPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:ctrl="using:Arboryn.UI.Controls">
-    <ScrollViewer>
-        <StackPanel Padding="32,24,32,32" Spacing="24" MaxWidth="1200">
-            <StackPanel Spacing="4">
+    xmlns:muxc="using:Microsoft.UI.Xaml.Controls"
+    xmlns:ctrl="using:Arboryn.UI.Controls"
+    xmlns:vm="using:Arboryn.UI.ViewModels">
+
+    <Grid Padding="32,24,32,16" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Head -->
+        <Grid Grid.Row="0" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Spacing="4">
                 <TextBlock Text="Historique" Style="{StaticResource ArborynTitleText}"
                            Foreground="{ThemeResource ArborynTextPrimaryBrush}" />
-                <TextBlock Text="Journal des opérations, undo par lot, rapports d'activité."
+                <TextBlock Text="Journal des opérations sur les fichiers (renommages, déplacements, copies, suppressions, écritures de métadonnées), les plus récentes d'abord."
                            Style="{StaticResource ArborynBodyText}"
-                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
             </StackPanel>
-            <ctrl:EmptyStateView
-                Glyph="&#xE81C;"
-                Title="Le journal est tenu, l'écran arrive bientôt"
-                Message="Les opérations sont déjà tracées en base (table operations) et l'undo de la dernière suppression est disponible depuis la page Doublons. La timeline complète par jour, l'undo par lot rétroactif et les rapports d'activité sont prévus avec les opérations cross-volume."
-                Milestone="En base depuis l'incrément 1 — vue complète prévue avec Inc 10" />
+            <Button Grid.Column="1" Content="Actualiser" Click="OnRefreshClick"
+                    VerticalAlignment="Top"
+                    IsEnabled="{x:Bind ViewModel.CanInteract, Mode=OneWay}" />
+        </Grid>
+
+        <!-- Summary + progress -->
+        <StackPanel Grid.Row="1" Spacing="8">
+            <muxc:ProgressBar IsIndeterminate="True"
+                              Visibility="{x:Bind ViewModel.IsBusy, Mode=OneWay}" />
+            <TextBlock Text="{x:Bind ViewModel.SummaryText, Mode=OneWay}"
+                       Style="{StaticResource ArborynCaptionText}"
+                       Foreground="{ThemeResource ArborynTextSecondaryBrush}" TextWrapping="Wrap" />
         </StackPanel>
-    </ScrollViewer>
+
+        <!-- Empty state -->
+        <ctrl:EmptyStateView Grid.Row="2"
+            Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay}"
+            Glyph="&#xE81C;"
+            Title="Aucune opération pour l'instant"
+            Message="Dès que vous supprimez des doublons, uniformisez une arborescence ou répliquez des fichiers, chaque opération apparaîtra ici avec son statut."
+            Milestone="Journal tenu depuis l'incrément 1" />
+
+        <!-- List -->
+        <Border Grid.Row="2" Style="{StaticResource ArborynCardBorder}" Padding="0"
+                Visibility="{x:Bind ViewModel.HasOperations, Mode=OneWay}">
+            <ListView ItemsSource="{x:Bind ViewModel.Operations, Mode=OneWay}"
+                      SelectionMode="None" Background="Transparent">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Padding" Value="16,10" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:HistoryRowItem">
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
+                                <Border Background="{ThemeResource ArborynCardSecondaryBrush}"
+                                        CornerRadius="{StaticResource ArborynRadiusPill}"
+                                        BorderBrush="{ThemeResource ArborynStrokeCardBrush}"
+                                        BorderThickness="1" Padding="8,1" HorizontalAlignment="Left">
+                                    <TextBlock Text="{x:Bind KindLabel}" FontSize="10"
+                                               Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                                </Border>
+                                <TextBlock Text="{x:Bind WhenText}"
+                                           Style="{StaticResource ArborynCaptionText}"
+                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="{x:Bind Description}"
+                                           Style="{StaticResource ArborynBodyStrongText}"
+                                           Foreground="{ThemeResource ArborynTextPrimaryBrush}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{x:Bind Detail}"
+                                           Style="{StaticResource ArborynCaptionText}"
+                                           Foreground="{ThemeResource ArborynTextSecondaryBrush}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Column="2" Text="{x:Bind StatusLabel}"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource ArborynCaptionText}"
+                                       Foreground="{x:Bind StatusForeground}" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Border>
+    </Grid>
 </Page>

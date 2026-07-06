@@ -126,6 +126,16 @@ public sealed class SqliteOperationJournal : IOperationJournal
         return rows.Select(Map).ToList();
     }
 
+    public async Task<IReadOnlyList<Operation>> GetRecentAsync(int limit, CancellationToken cancellationToken)
+    {
+        await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<OpRow>(new CommandDefinition(
+            $"{SelectColumns} ORDER BY COALESCE(executed_at, created_at) DESC LIMIT @Limit;",
+            new { Limit = limit }, cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        return rows.Select(Map).ToList();
+    }
+
     public async Task<IReadOnlyList<Operation>> GetPendingReplicationOperationsAsync(CancellationToken cancellationToken)
     {
         await using var connection = await _databaseFactory.OpenAsync(cancellationToken).ConfigureAwait(false);

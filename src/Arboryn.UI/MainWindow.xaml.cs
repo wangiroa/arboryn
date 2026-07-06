@@ -27,7 +27,9 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
 
         ExtendsContentIntoTitleBar = true;
-        SetTitleBar(AppTitleBar);
+        // Seul le spacer central est la zone de déplacement : la recherche et les actions restent
+        // cliquables (WinUI capterait sinon leurs clics pour déplacer la fenêtre).
+        SetTitleBar(AppTitleBarDragRegion);
         ApplyAppIcon();
         ConfigureTitleBarInsets();
 
@@ -182,6 +184,20 @@ public sealed partial class MainWindow : Window
         {
             sender.ItemsSource = null;
         }
+    }
+
+    /// <summary>
+    /// Validation de la recherche (Entrée ou choix d'une suggestion) : le détail « présent sur … »
+    /// est déjà visible dans la liste ; on bascule vers le catalogue pour explorer l'œuvre.
+    /// </summary>
+    private void OnUniversalSearchQuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    {
+        if (string.IsNullOrWhiteSpace(sender.Text))
+        {
+            return;
+        }
+
+        SelectRoute("catalog");
     }
 
     private void OnCancelScanClick(object sender, RoutedEventArgs e)

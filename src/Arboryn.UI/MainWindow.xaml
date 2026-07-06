@@ -15,11 +15,15 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Custom title bar -->
+        <!-- Custom title bar.
+             Seul le « spacer » central (AppTitleBarDragRegion) est passé à SetTitleBar : ainsi la
+             zone de déplacement de la fenêtre ne recouvre plus la barre de recherche ni les actions,
+             qui redeviennent cliquables (sinon WinUI capte les clics pour déplacer la fenêtre). -->
         <Grid x:Name="AppTitleBar" Grid.Row="0"
               Background="Transparent"
               ColumnSpacing="12" Padding="12,0,12,0">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
@@ -33,6 +37,7 @@
                             QueryIcon="Find"
                             TextMemberPath="FileName"
                             TextChanged="OnUniversalSearchTextChanged"
+                            QuerySubmitted="OnUniversalSearchQuerySubmitted"
                             PlaceholderText="Rechercher une œuvre dans tous les volumes…">
                 <AutoSuggestBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:UniversalSearchItem">
@@ -46,8 +51,11 @@
                 </AutoSuggestBox.ItemTemplate>
             </AutoSuggestBox>
 
+            <!-- Spacer déplaçable (zone de titre effective). -->
+            <Border Grid.Column="1" x:Name="AppTitleBarDragRegion" Background="Transparent" />
+
             <!-- Trailing actions : uniquement l'indicateur d'activité (scan). -->
-            <StackPanel Grid.Column="1" x:Name="TrailingActions" Orientation="Horizontal" Spacing="6"
+            <StackPanel Grid.Column="2" x:Name="TrailingActions" Orientation="Horizontal" Spacing="6"
                         VerticalAlignment="Center">
                 <Border Background="{ThemeResource ArborynAccentSelectedBgBrush}"
                         CornerRadius="{StaticResource ArborynRadiusPill}"
